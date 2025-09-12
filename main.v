@@ -200,6 +200,7 @@ module main(
     zoom_in_one zoom_in_one_module(
         //instanciar as portas
     );
+    
     zoom_in_two zoom_in_two_module(
         //instanciar as portas
     );

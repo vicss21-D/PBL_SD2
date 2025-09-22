@@ -49,6 +49,8 @@ module memory_control (
 
     reg has_alg_on_exec;
 
+    reg [9:0] count_x_new, count_y_new; 
+
     always @(posedge clock) begin
 
         case (state)
@@ -58,6 +60,8 @@ module memory_control (
                     has_alg_on_exec <= 1'b0;
                     algorithm_step_counter <= 19'b0;
                     num_steps_needed <= 19'b0;
+                    count_x_new <= 19'b0;
+                    count_y_new <= 19'b0;
                     if (enable == 1'b1) begin
                         state <= operation;
                     end else  begin
@@ -131,7 +135,7 @@ module memory_control (
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
                         num_steps_needed <= 19'd47700;
-                        addr_out <= last_addr_rd-16'd28800; //deslocamento até 1 quarto da imagem
+                        addr_out <= last_addr_wr-16'd28800; //deslocamento até 1 quarto da imagem
                         state <= WAIT_WR_RD;
                         operation_step_counter <= 3'b000;
                     end else begin
@@ -158,7 +162,35 @@ module memory_control (
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin //
                         num_steps_needed <= 19'd86100;
-                        //calcular o primeiro endereço que será utilizado
+                        
+                        addr_out <= last_addr_wr - 16'd28800;
+                        state <= WAIT_WR_RD;
+                        operation_step_counter <= 3'b000;
+                    end
+                    else if (operation_step_counter == 3'b001) begin
+                        algorithm_step_counter <= algorithm_step_counter + 1'b1;
+                        operation_step_counter <= 3'b000;
+                        addr_out <= last_addr_wr + 1'b1;
+                        wr_enable <= 1'b1;
+                        state <= WAIT_WR_RD;
+                        
+                        if (count_y_new == 10'd239) begin
+                            count_x_new <= count_x_new + 1'b1;
+                            count_y_new <= 10'b0;
+                        end else begin
+                            count_y_new <= count_y_new + 1'b1;
+                        end
+                    
+                    end else if (operation_step_counter == 3'b000) begin
+                        operation_step_counter <= 3'b001;
+                        addr_out <= last_addr_rd + (count_y_new>>2) + ((count_x_new>>2)*320);  //calcula o endereço do dado novo com base na imagem anterior e levando em conta que são 2 pixeis por endereço
+                        state <= WAIT_WR_RD;
+                    end
+                    last_op <= NHI_ALG; //guarda "endereço" da ultima operação
+                end
+
+                NH_ALG: begin
+                    if (!has_alg_on_exec) begin
                         
                     end
                 end

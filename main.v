@@ -34,7 +34,7 @@ module main(
 
 
 
-    parameter ORIGINAL_WIDTH = 160;
+    parameter ORIGINAL_WIDTH = 320;
     parameter ORIGINAL_HEIGHT = 120;
     
 
@@ -118,8 +118,31 @@ module main(
             default: 
         endcase
     end
-    //vga
-    vga_module video_out(
-        //instanciar as portas
+    memory_control addr_control(
+        .addr_base(),
+        .clock(),
+        .operation(),
+        .current_zoom(),
+        .enable(),
+        .addr_out(),
+        .done(),
+        .wr_enable(),
     );
+
+    //vga
+    vga_module vga_out(
+    .clock(),     // 25 MHz
+    .reset(),     // Active high
+    .color_in(), // Pixel color data (RRRGGGBB)
+    .next_x(),  // x-coordinate of NEXT pixel that will be drawn
+    .next_y(),  // y-coordinate of NEXT pixel that will be drawn
+    .hsync(),    // HSYNC (to VGA connector)
+    .vsync(),    // VSYNC (to VGA connctor)
+    .red(),     // RED (to resistor DAC VGA connector)
+    .green(),   // GREEN (to resistor DAC to VGA connector)
+    .blue(),    // BLUE (to resistor DAC to VGA connector)
+    .sync(),          // SYNC to VGA connector
+    .clk(),           // CLK to VGA connector
+    .blank()          // BLANK to VGA connector
+);
 endmodule

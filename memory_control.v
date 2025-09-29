@@ -25,11 +25,11 @@ module memory_control (
     //estado apenas para aguardar finalizar a operação de leitura ou escrita
     localparam WAIT_WR_RD = 3'b111;
 
-    input [16:0] addr_base;
+    input [18:0] addr_base;
     input [2:0] operation;
     input [2:0] current_zoom;
     input enable, clock;
-    output reg [16:0] addr_out;
+    output reg [18:0] addr_out;
     output reg done;
     output reg wr_enable;
 
@@ -57,16 +57,16 @@ module memory_control (
 
         case (state)
                 IDLE: begin
-                    done <= 1'b1;
                     wr_enable <= 1'b0;
                     has_alg_on_exec <= 1'b0;
                     algorithm_step_counter <= 19'b0;
                     num_steps_needed <= 19'b0;
                     count_x_new <= 10'b0;
                     count_y_new <= 10'b0;
-                    if (enable == 1'b1) begin
+                    if (enable == 1'b1 && !done) begin
                         state <= operation;
                     end else  begin
+                        done <= (enable) ? 1'b0:1'b1;
                         state <= IDLE;
                     end
                 end

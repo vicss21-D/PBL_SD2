@@ -6,7 +6,6 @@ module zoom_out_one (
     input enable;
     input [31:0] data_in;
     output [7:0] data_out;
-    output done;
 
     wire [10:0] pixel_sum;
 

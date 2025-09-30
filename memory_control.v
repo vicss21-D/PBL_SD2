@@ -7,6 +7,7 @@ module memory_control (
     addr_out,
     done,
     wr_enable,
+    counter_op,
 );
 
     // estado de aguardar uma nova instrução
@@ -25,20 +26,21 @@ module memory_control (
     //estado apenas para aguardar finalizar a operação de leitura ou escrita
     localparam WAIT_WR_RD = 3'b111;
 
-    input [18:0] addr_base;
+    input [17:0] addr_base;
     input [2:0] operation;
     input [2:0] current_zoom;
     input enable, clock;
-    output reg [18:0] addr_out;
+    output reg [17:0] addr_out;
     output reg done;
     output reg wr_enable;
+    output counter_op;
 
     reg [18:0] num_steps_needed; // tempo que uma operação necessita para ser execultada
 
     reg [2:0] state; //estado atual
 
-    reg [16:0] last_addr_rd; //ultimo endereço utilizado
-    reg [16:0] last_addr_wr; //ultimo endereço utilizado
+    reg [17:0] last_addr_rd; //ultimo endereço utilizado
+    reg [17:0] last_addr_wr; //ultimo endereço utilizado
     reg [1:0] wr_rd_timer_counter; // conta os 3 ciclos necessarios para realizar uma operação de leitura ou escrita
 
     reg [2:0] last_op; //armazena qual foi a ultima operação enviada
@@ -47,10 +49,12 @@ module memory_control (
 
     reg [2:0] operation_step_counter; // armazena em qual passo do algoritimo está
 
+    assign counter_op = operation_step_counter;
+
     reg has_alg_on_exec;
 
     reg [9:0] count_x_new, count_y_new, count_x_old, count_y_old;
-    reg [18:0] addr_base_wr, addr_base_rd;
+    reg [17:0] addr_base_wr, addr_base_rd;
 
 
     always @(posedge clock) begin
@@ -112,7 +116,6 @@ module memory_control (
                                 last_addr_wr <= last_addr_wr;
                             end
                         endcase
-                        last_addr <= addr_out ; // guarda o ultimo endereço de escrita / leitura
                     end else begin
                         state <= WAIT_WR_RD;
                     end
@@ -143,7 +146,7 @@ module memory_control (
                         count_y_old <= 10'd60; //configura o range que será lido da imagem anterior
                         count_x_new <= 10'd00; //configura os valores da nova imagem para o começo
                         count_y_new <= 10'd00; //configura os valores da nova imagem para o começo
-                        if (current_zoom = 3'b101) begin
+                        if (current_zoom == 3'b101) begin
                             addr_base_rd <= 18'd96000;
                             addr_base_wr <= 18'd153600;
                         end else begin
@@ -214,7 +217,7 @@ module memory_control (
                         count_y_old <= 10'd60; //configura o range que será lido da imagem anterior
                         count_x_new <= 10'd00; //configura os valores da nova imagem para o começo
                         count_y_new <= 10'd00; //configura os valores da nova imagem para o começo
-                        if (current_zoom = 3'b101) begin
+                        if (current_zoom == 3'b101) begin
                             addr_base_rd <= 18'd96000;
                             addr_base_wr <= 18'd153600;
                         end else begin
@@ -254,7 +257,7 @@ module memory_control (
                         count_y_old <= 10'd00; //configura o range que será lido da imagem anterior
                         count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //configura os valores da nova imagem para o começo
                         count_y_new <= (current_zoom != 3'b010) ? 10'd60:10'd90; //configura os valores da nova imagem para o começo
-                        if (current_zoom = 3'b010) begin
+                        if (current_zoom == 3'b010) begin
                             addr_base_rd <= 18'd0;
                             addr_base_wr <= 18'd182400;
                         end else begin
@@ -296,7 +299,7 @@ module memory_control (
                         count_y_old <= (current_zoom != 3'b010) ? 10'd00:10'd60; //configura o range que será lido da imagem anterior
                         count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //configura os valores da nova imagem para o começo
                         count_y_new <= (current_zoom != 3'b010) ? 10'd60:10'd90; //configura os valores da nova imagem para o começo
-                        if (current_zoom = 3'b010) begin
+                        if (current_zoom == 3'b010) begin
                             addr_base_rd <= 18'd121600;
                             addr_base_wr <= 18'd182400;
                         end else begin
@@ -310,7 +313,7 @@ module memory_control (
                                 if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin
                                     count_y_old <= count_y_old + 1'b1; //incrementa uma linha
                                     count_x_old <= (current_zoom != 3'b010) ? 10'd00:10'd80;             // volta pra primeira coluna
-                                    addr_out <= addr_base_rd + (count_old_y*320) + ((current_zoom != 3'b010) ? 10'd00:10'd80); //leitura na imagem antiga
+                                    addr_out <= addr_base_rd + (count_y_old*320) + ((current_zoom != 3'b010) ? 10'd00:10'd80); //leitura na imagem antiga
                                     //TODO: Verificar se o bloco acima funciona
                                 end else begin
                                     count_x_old <= count_x_old + 1'b1;

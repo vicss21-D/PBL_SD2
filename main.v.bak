@@ -21,11 +21,11 @@ module main(
     input CLOCK_50;
     input [2:0] INSTRUCTION;
     input [7:0] DATA_IN;
-    input [17:0] MEM_ADDR;
+    input [18:0] MEM_ADDR;
     input ENABLE;
 
     output FLAG_DONE;
-    output reg [7:0] DATA_OUT;
+    output [7:0] DATA_OUT;
     output [7:0] VGA_R;
     output [7:0] VGA_B;
     output [7:0] VGA_G;
@@ -33,7 +33,6 @@ module main(
     output VGA_H_SYNC_N;
     output VGA_V_SYNC_N;
     output VGA_CLK;
-    output VGA_SYNC;
 
 
 
@@ -75,17 +74,17 @@ module main(
     
 
     //memoria
-    reg [17:0] mem_addr;
+    reg [18:0] mem_addr;
     reg [7:0] data_in_mem;
     wire [7:0] data_out_mem;
     wire mem_wr;
-
-    memory_block memory_to_img(
-	.address(mem_addr),
-	.clock(clk_100),
-	.data(data_in_mem),
-	.wren(mem_wr),
-	.q(data_out_mem));
+    memoryBlock imgMemory(
+        .mem_addr(mem_addr),
+        .clk_100(clk_100),
+        .data_in_mem(data_in_mem),
+        .mem_wr(mem_wr),
+	    .data_out_mem(data_out_mem)
+    );
     
 
     reg [1:0] uc_state;
@@ -95,13 +94,13 @@ module main(
 
     reg [2:0] last_instruction; // realizar instruções em cima
 
-    reg [17:0] addr_to_memory_control;
+    reg [18:0] addr_to_memory_control;
     reg has_alg_on_exec;
 
     wire [9:0] next_x, next_y;
 
-    wire [17:0] addr_from_memory_control;
-    wire [17:0] addr_from_vga;
+    wire [18:0] addr_from_memory_control;
+    wire [18:0] addr_from_vga;
     wire [7:0] color_to_vga;
     reg [2:0] current_zoom;
     reg [31:0] data_read_from_memory;
@@ -163,7 +162,7 @@ module main(
                         data_in_mem <= data_read_from_memory[7:0];
                     end
                 end
-                STORE: begin
+                WR_DATA: begin
                     data_in_mem <= DATA_IN;
                 end
                 default: begin
@@ -235,9 +234,7 @@ module main(
                 current_zoom <= 3'b100;
             end
 
-            default: begin
-                uc_state <= IDLE;
-            end
+            default: 
         endcase
 
         if (has_alg_on_exec) begin

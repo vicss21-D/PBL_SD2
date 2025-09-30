@@ -36,6 +36,7 @@ module main(
     output VGA_SYNC;
 
 
+		assign FLAG_DONE = addr_control_done;
 
     parameter ORIGINAL_WIDTH = 320;
     parameter ORIGINAL_HEIGHT = 240;
@@ -114,20 +115,25 @@ module main(
 	 reg inside_box;
 	 
 	 reg [17:0] addr_base;
+
+     reg [16:0] counter_addr;
 	 
-	 always @(posedge clk_25_vga) begin
-	 if(next_y >= 60 && next_y <= 180) begin
-			if (next_x >= 80 && next_x <= 240) begin
-				addr_from_vga <= addr_base + (next_x + (320*next_y)) - (80 + 19200);
-				inside_box <= 1'b1;
-			end else begin
-				addr_from_vga <= 0;
-				inside_box <= 1'b0;
-			end
-		end else begin
-				addr_from_vga <= 0;
-				inside_box <= 1'b0;
-		end
+	 always @(negedge clk_25_vga) begin
+    if (next_y < 159 && next_x < 119) begin
+        counter_addr <= 0;
+    end else if(next_y >= 119 && next_y < 360) begin
+        if (next_x >= 159 && next_x < 480) begin
+            addr_from_vga <= addr_base + counter_addr;
+            inside_box <= 1'b1;
+            counter_addr <= counter_addr + 1'b1;
+        end else begin
+            addr_from_vga <= 0;
+            inside_box <= 1'b0;
+        end
+    end else begin
+            addr_from_vga <= 0;
+            inside_box <= 1'b0;
+    end
 	 end
 
     always @(negedge clk_100) begin
@@ -262,6 +268,10 @@ module main(
                     uc_state <= IDLE;
                     addr_control_enable <= 1'b0;
                 end 
+                else begin
+                    uc_state <= ALGORITHM;
+                    addr_control_enable <= 1'b1;
+                end
             end
             ALGORITHM: begin
                 if (addr_control_done) begin
@@ -274,6 +284,9 @@ module main(
                     end else begin
                         current_zoom <= current_zoom;
                     end
+                end else begin
+                    uc_state <= ALGORITHM;
+                    addr_control_enable <= 1'b1;
                 end
             end
             RESET: begin
@@ -281,6 +294,7 @@ module main(
                 uc_state <= IDLE;
                 addr_control_enable <= 1'b0;
                 has_alg_on_exec <= 1'b0;
+					 
             end
 
             default: begin

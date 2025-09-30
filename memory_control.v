@@ -33,7 +33,7 @@ module memory_control (
     output reg [17:0] addr_out;
     output reg done;
     output reg wr_enable;
-    output counter_op;
+    output [2:0] counter_op;
 
     reg [18:0] num_steps_needed; // tempo que uma operação necessita para ser execultada
 
@@ -81,7 +81,7 @@ module memory_control (
                         if (last_op == RD_DATA || last_op == WR_DATA) begin //se for operação de escrita
                             state <= IDLE; //vai pro idle
                         end else begin // se não
-                            if (algorithm_step_counter >= num_steps_needed-1) begin //se tiver chegado no numero de passos necessarios
+                            if (algorithm_step_counter >= num_steps_needed) begin //se tiver chegado no numero de passos necessarios
                                 state <= IDLE; //vai pro idle
                                 has_alg_on_exec <= 1'b0; //desativa o sinal que tem um algoritmo em execução
                                 done <= 1'b1; //ativa o sinal de pronto
@@ -167,8 +167,9 @@ module memory_control (
                 PR_ALG: begin
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd10;//19'd19200;
+                        num_steps_needed <= 19'd5;//19'd19200;
                         state <= WAIT_WR_RD;
+                        wr_enable <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
                         operation_step_counter <= 3'b001;
                         count_x_old <= 10'd80; //configura o range que será lido da imagem anterior
@@ -188,6 +189,7 @@ module memory_control (
                             3'b000: begin
                                 operation_step_counter <= operation_step_counter + 1'b1;
                                 wr_rd_timer_counter <= 2'b00;
+                                wr_enable <= 1'b1;
                                 if (count_x_old == 10'd239) begin
                                     count_y_old <= count_y_old + 1'b1; //incrementa uma linha
                                     count_x_old <= 10'd80;             // volta pra primeira coluna
@@ -227,7 +229,7 @@ module memory_control (
                                 algorithm_step_counter <= algorithm_step_counter + 1'b1; // incrementa um a contagem de passos
                                 operation_step_counter <= 3'b000; //reseta o contador da operação
                                 addr_out <= addr_base_wr +(320*count_y_new+1) + count_x_new; //acessa o ultimo endereço escrito +1
-                                wr_enable <= 1'b1; //habilita a escrita
+                                wr_enable <= 1'b0; //habilita a escrita
                                 state <= WAIT_WR_RD; //vai pro estado de aguardar a escrita acontecer
                                 wr_rd_timer_counter <= 2'b00;
                                 if (count_x_new == 10'd319) begin //caso tenha chegado na borda da imagem incrementa uma linha no x e desce para a fileira de baixo
@@ -242,11 +244,12 @@ module memory_control (
                 NHI_ALG: begin
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd10;//19'd76800; //configura o numero de passos necessarios
+                        num_steps_needed <= 19'd5;//19'd76800; //configura o numero de passos necessarios
                         has_alg_on_exec <= 1'b1;
                         state <= WAIT_WR_RD;
                         wr_rd_timer_counter <= 2'b00;
                         operation_step_counter <= 3'b001;
+                        wr_enable <= 1'b1;
                         count_x_old <= 10'd80; //configura o range que será lido da imagem anterior
                         count_y_old <= 10'd60; //configura o range que será lido da imagem anterior
                         count_x_new <= 10'd00; //configura os valores da nova imagem para o começo
@@ -264,7 +267,7 @@ module memory_control (
                         algorithm_step_counter <= algorithm_step_counter + 1'b1; //incrementa o contador de passos
                         operation_step_counter <= 3'b000; //reinicia pro passo 1
                         addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320); // endereço onde será escrito
-                        wr_enable <= 1'b1; //habilita o sinal de escrita
+                        wr_enable <= 1'b0; //habilita o sinal de escrita
                         state <= WAIT_WR_RD; //vai para o estado de aguardar o fim da operação de escrita
                         if (count_x_new == 10'd319) begin //se estiver na borda da imagem
                             count_y_new <= count_y_new + 1'b1; //incrementa uma coluna
@@ -274,6 +277,7 @@ module memory_control (
                         end
                     
                     end else if (operation_step_counter == 3'b000) begin
+                        wr_enable <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
                         operation_step_counter <= 3'b001; //incrementa um passo
                         addr_out <= addr_base_rd + ((count_x_new)>>1) + ((count_y_new*320)>>1);  //calcula o endereço do pixel a ser lido
@@ -285,9 +289,10 @@ module memory_control (
                 NH_ALG: begin
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd10;//19'd38400; 
+                        num_steps_needed <= 19'd5;//19'd38400; 
                         has_alg_on_exec <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
+                        wr_enable <= 1'b1;
                         state <= WAIT_WR_RD;
                         operation_step_counter <= 3'b001;
                         count_x_old <= 10'd00; //configura o range que será lido da imagem anterior
@@ -307,7 +312,7 @@ module memory_control (
                         algorithm_step_counter <= algorithm_step_counter + 1'b1; //incrementa o contador de passos
                         operation_step_counter <= 3'b000; //reinicia pro passo 1
                         addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320); // endereço onde será escrito
-                        wr_enable <= 1'b1; //habilita o sinal de escrita
+                        wr_enable <= 1'b0; //habilita o sinal de escrita
                         state <= WAIT_WR_RD; //vai para o estado de aguardar o fim da operação de escrita
                         if (count_x_new == 10'd239) begin //se estiver na borda da imagem
                             count_y_new <= count_y_new + 1'b1; //incrementa uma coluna
@@ -318,9 +323,10 @@ module memory_control (
                             count_x_new <= count_x_new + 1'b1;
                             count_x_old <= count_x_old + (current_zoom != 3'b010) ? 10'd2:10'd4;
                         end
-                    
+
                     end else if (operation_step_counter == 3'b000) begin
                         wr_rd_timer_counter <= 2'b00;
+                        wr_enable <= 1'b1;
                         operation_step_counter <= 3'b001; //incrementa um passo
                         addr_out <= addr_base_rd + (count_x_old) + ((count_y_old*320));  //calcula o endereço do pixel a ser lido
                         state <= WAIT_WR_RD; //vai apra o estado de leitura
@@ -331,7 +337,7 @@ module memory_control (
                 BA_ALG: begin 
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= (current_zoom != 3'b010) ? /*19'd30000*/19'd10:19'd10/*19'd19200*/;
+                        num_steps_needed <= (current_zoom != 3'b010) ? /*19'd30000*/19'd5:19'd5/*19'd19200*/;
                         state <= WAIT_WR_RD;
                         has_alg_on_exec <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
@@ -382,12 +388,13 @@ module memory_control (
                                 state <= WAIT_WR_RD;
                                 count_x_old <= count_x_old + 2'd2; //incrementa a coluna
                                 wr_rd_timer_counter <= 2'b00;
+                                wr_enable <= 1'b1;
                             end
                             3'b100: begin //realizar a escrita
                                 algorithm_step_counter <= algorithm_step_counter + 1'b1; // incrementa um a contagem de passos
                                 operation_step_counter <= 3'b000; //reseta o contador da operação
                                 addr_out <=addr_base_wr +(320*count_y_new) + count_x_new; //acessa o ultimo endereço escrito +1
-                                wr_enable <= 1'b1; //habilita a escrita
+                                wr_enable <= 1'b0; //habilita a escrita
                                 state <= WAIT_WR_RD; //vai pro estado de aguardar a escrita acontecer
 
                                 if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin //caso tenha chegado na borda da imagem incrementa uma linha no x e desce para a fileira de baixo

@@ -118,7 +118,7 @@ module main(
 	 always @(posedge clk_25_vga) begin
 	 if(next_y >= 60 && next_y <= 180) begin
 			if (next_x >= 80 && next_x <= 240) begin
-				addr_from_vga <= (next_x + (320*next_y)) - (80 + 19200);
+				addr_from_vga <= addr_base + (next_x + (320*next_y)) - (80 + 19200);
 				inside_box <= 1'b1;
 			end else begin
 				addr_from_vga <= 0;
@@ -193,7 +193,6 @@ module main(
     end
 
     //algoritmos
-
     zoom_in_two zoom_in_pr(
         .enable(enable_rp),
         .data_in(data_read_from_memory[7:0]),
@@ -205,8 +204,6 @@ module main(
         .data_in(data_read_from_memory),
         .data_out(data_from_block_avg)
     );
-	 
-	 
 
     //maquina de estados da unidade de controle
     always @(posedge CLOCK_50) begin //TODO: Adicionar parte que troca o algoritmo pra seu oposto a depender da quantidade de zoom dado
@@ -220,7 +217,6 @@ module main(
                         addr_to_memory_control  <= MEM_ADDR;
                         has_alg_on_exec <= 1'b1;
                     end else if (INSTRUCTION <=3'b110) begin
-                        last_instruction <= INSTRUCTION;
                         uc_state <= ALGORITHM;
                         has_alg_on_exec <= 1'b1;
                     end else begin
@@ -229,6 +225,35 @@ module main(
                         has_alg_on_exec <= 1'b0;
                     end
                     addr_control_enable <= 1'b1;
+
+                    case (last_instruction)
+                        ZOOM_IN_VP: begin
+                            if (current_zoom < 3'b100)
+                                last_instruction <= ZOOM_OUT_VD;
+                            else
+                                last_instruction <= ZOOM_IN_RP;
+                        end
+                        ZOOM_IN_RP: begin
+                            if (current_zoom < 3'b100)
+                            last_instruction <= ZOOM_OUT_MP;
+                            else
+                                last_instruction <= ZOOM_IN_RP;
+                        end
+                        ZOOM_OUT_MP: begin
+                            if (current_zoom > 3'b100) begin
+                                last_instruction <= ZOOM_IN_RP;
+                            end else begin
+                                last_instruction <= ZOOM_OUT_MP;
+                            end
+                        end
+                        ZOOM_OUT_VD: begin
+                            if (current_zoom > 3'b100) begin
+                                last_instruction <= ZOOM_IN_VP;
+                            end else begin
+                                last_instruction <= ZOOM_OUT_VD;
+                            end
+                        end
+                    endcase
                 end
             end
             READ_AND_WRITE: begin
@@ -253,6 +278,9 @@ module main(
             end
             RESET: begin
                 current_zoom <= 3'b100;
+                uc_state <= IDLE;
+                addr_control_enable <= 1'b0;
+                has_alg_on_exec <= 1'b0;
             end
 
             default: begin
@@ -264,6 +292,18 @@ module main(
             mem_addr <= addr_from_memory_control;
         end else begin
             mem_addr <= addr_from_vga;
+        end
+
+        if (current_zoom == 3'b100) begin
+            addr_base <= 18'b0;
+        end else if (current_zoom == 3'b010) begin
+            addr_base <= 18'd182400;
+        end else if (current_zoom == 3'b001) begin
+            addr_base <= 18'd96000;
+        end else if (current_zoom == 3'b101) begin
+            addr_base <= 18'd153600;
+        end else if (current_zoom == 3'b110) begin
+            addr_base <= 18'd76800;
         end
     end
 

@@ -194,7 +194,7 @@ module main(
             IDLE: begin
                 if(ENABLE) begin
                     
-                    if(INSTRUCTION == 3'b001 || INSTRUCTION == 3'b010) begin
+                    if(INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
                         last_instruction <= INSTRUCTION;
                         uc_state <= READ_AND_WRITE;
                         addr_to_memory_control  <= MEM_ADDR;

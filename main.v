@@ -101,7 +101,7 @@ module main(
     wire [9:0] next_x, next_y;
 
     wire [17:0] addr_from_memory_control;
-    wire [17:0] addr_from_vga;
+    reg [17:0] addr_from_vga;
     wire [7:0] color_to_vga;
     reg [2:0] current_zoom;
     reg [31:0] data_read_from_memory;
@@ -111,6 +111,24 @@ module main(
     //maquina de estados auxiliar para a execução dos algoritmos
 
     wire [2:0] counter_op;
+	 reg inside_box;
+	 
+	 reg [17:0] addr_base;
+	 
+	 always @(posedge clk_25_vga) begin
+	 if(next_y >= 60 && next_y <= 180) begin
+			if (next_x >= 80 && next_x <= 240) begin
+				addr_from_vga <= (next_x + (320*next_y)) - (80 + 19200);
+				inside_box <= 1'b1;
+			end else begin
+				addr_from_vga <= 0;
+				inside_box <= 1'b0;
+			end
+		end else begin
+				addr_from_vga <= 0;
+				inside_box <= 1'b0;
+		end
+	 end
 
     always @(negedge clk_100) begin
         if (has_alg_on_exec) begin
@@ -187,6 +205,8 @@ module main(
         .data_in(data_read_from_memory),
         .data_out(data_from_block_avg)
     );
+	 
+	 
 
     //maquina de estados da unidade de controle
     always @(posedge CLOCK_50) begin //TODO: Adicionar parte que troca o algoritmo pra seu oposto a depender da quantidade de zoom dado
@@ -247,7 +267,7 @@ module main(
         end
     end
 
-    assign color_to_vga = (has_alg_on_exec) ? data_out_mem : 8'b0;
+    assign color_to_vga = (has_alg_on_exec) ? 8'b0 : ((inside_box) ? data_out_mem:8'b0);
 
     memory_control addr_control(
         .addr_base(addr_to_memory_control),

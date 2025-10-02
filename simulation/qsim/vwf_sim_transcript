@@ -1,169 +1,66 @@
 Determining the location of the ModelSim executable...
 
-Using: C:/intelFPGA/20.1/modelsim_ase/win32aloem
+Using: /opt/intelFPGA_lite/20.1/modelsim_ase/bin
 
 To specify a ModelSim executable directory, select: Tools -> Options -> EDA Tool Options
 Note: if both Questa Intel FPGA Edition and ModelSim executables are available, Questa Intel FPGA Edition will be used.
 
 **** Generating the ModelSim Testbench ****
 
-quartus_eda --gen_testbench --tool=modelsim_oem --format=verilog --write_settings_files=off SD-Coprocessor -c main --vector_source="C:/Users/maiko/Documents/Problema-SD-2025-2/Waveform.vwf" --testbench_file="C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/Waveform.vwf.vt"
+quartus_eda --gen_testbench --tool=modelsim_oem --format=verilog --write_settings_files=off SD-Coprocessor -c main --vector_source="/run/media/kake/disco_2/SD/Problema-SD-2025-2/Waveform.vwf" --testbench_file="/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/Waveform.vwf.vt"
 
-TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize
-
-Info: *******************************************************************
-Info: Running Quartus Prime EDA Netlist Writer
-    Info: Version 24.1std.0 Build 1077 03/04/2025 SC Lite Edition
-    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
-    Info: Your use of Altera Corporation's design tools, logic functions 
-    Info: and other software and tools, and any partner logic 
-    Info: functions, and any output files from any of the foregoing 
-    Info: (including device programming or simulation files), and any 
-    Info: associated documentation or information are expressly subject 
-    Info: to the terms and conditions of the Altera Program License 
-    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
-    Info: the Altera IP License Agreement, or other applicable license
-    Info: agreement, including, without limitation, that your use is for
-    Info: the sole purpose of programming logic devices manufactured by
-    Info: Altera and sold by Altera or its authorized distributors.  Please
-    Info: refer to the Altera Software License Subscription Agreements 
-    Info: on the Quartus Prime software download page.
-    Info: Processing started: Tue Sep 30 19:55:08 2025
-Info: Command: quartus_eda --gen_testbench --tool=modelsim_oem --format=verilog --write_settings_files=off SD-Coprocessor -c main --vector_source=C:/Users/maiko/Documents/Problema-SD-2025-2/Waveform.vwf --testbench_file=C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/Waveform.vwf.vt
-Warning (20013): Ignored 16 assignments for entity "pll" -- entity does not exist in design
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_NAME altera_pll -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_VERSION 24.1 -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_ENV mwpim -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-Warning (20013): Ignored 317 assignments for entity "pll_0002" -- entity does not exist in design
-Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
-
- output pin "addr_out[2]" in vector source file when writing test bench files
-
+Info: *******************************************************************Info: Running Quartus Prime EDA Netlist Writer    Info: Version 24.1std.0 Build 1077 03/04/2025 SC Lite Edition    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.    Info: Your use of Altera Corporation's design tools, logic functions     Info: and other software and tools, and any partner logic     Info: functions, and any output files from any of the foregoing     Info: (including device programming or simulation files), and any     Info: associated documentation or information are expressly subject     Info: to the terms and conditions of the Altera Program License     Info: Subscription Agreement, the Altera Quartus Prime License Agreement,    Info: the Altera IP License Agreement, or other applicable license    Info: agreement, including, without limitation, that your use is for    Info: the sole purpose of programming logic devices manufactured by    Info: Altera and sold by Altera or its authorized distributors.  Please    Info: refer to the Altera Software License Subscription Agreements     Info: on the Quartus Prime software download page.    Info: Processing started: Thu Oct  2 05:51:30 2025Info: Command: quartus_eda --gen_testbench --tool=modelsim_oem --format=verilog --write_settings_files=off SD-Coprocessor -c main --vector_source=/run/media/kake/disco_2/SD/Problema-SD-2025-2/Waveform.vwf --testbench_file=/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/Waveform.vwf.vtWarning (20013): Ignored 16 assignments for entity "pll" -- entity does not exist in design    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_NAME altera_pll -entity pll -sip aux_files/pll.sip -library lib_pll was ignored    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_VERSION 24.1 -entity pll -sip aux_files/pll.sip -library lib_pll was ignored    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_ENV mwpim -entity pll -sip aux_files/pll.sip -library lib_pll was ignoredWarning (20013): Ignored 317 assignments for entity "pll_0002" -- entity does not exist in designWarning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
+ring output pin "addr_out[2]" in vector source file when writing test bench files
 Completed successfully. 
 
 Completed successfully. 
 
 **** Generating the functional simulation netlist ****
 
-quartus_eda --write_settings_files=off --simulation --functional=on --flatten_buses=off --tool=modelsim_oem --format=verilog --output_directory="C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/" SD-Coprocessor -c main
+quartus_eda --write_settings_files=off --simulation --functional=on --flatten_buses=off --tool=modelsim_oem --format=verilog --output_directory="/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/" SD-Coprocessor -c main
 
-TBBmalloc: skip allocation functions replacement in ucrtbase.dll: unknown prologue for function _msize
-
-Info: *******************************************************************
-Info: Running Quartus Prime EDA Netlist Writer
-    Info: Version 24.1std.0 Build 1077 03/04/2025 SC Lite Edition
-    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.
-    Info: Your use of Altera Corporation's design tools, logic functions 
-    Info: and other software and tools, and any partner logic 
-    Info: functions, and any output files from any of the foregoing 
-    Info: (including device programming or simulation files), and any 
-    Info: associated documentation or information are expressly subject 
-    Info: to the terms and conditions of the Altera Program License 
-    Info: Subscription Agreement, the Altera Quartus Prime License Agreement,
-    Info: the Altera IP License Agreement, or other applicable license
-    Info: agreement, including, without limitation, that your use is for
-    Info: the sole purpose of programming logic devices manufactured by
-    Info: Altera and sold by Altera or its authorized distributors.  Please
-    Info: refer to the Altera Software License Subscription Agreements 
-    Info: on the Quartus Prime software download page.
-    Info: Processing started: Tue Sep 30 19:55:09 2025
-Info: Command: quartus_eda --write_settings_files=off --simulation=on --functional=on --flatten_buses=off --tool=modelsim_oem --format=verilog --output_directory=C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/ SD-Coprocessor -c main
-Warning (20013): Ignored 16 assignments for entity "pll" -- entity does not exist in design
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_NAME altera_pll -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_VERSION 24.1 -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_ENV mwpim -entity pll -sip aux_files/pll.sip -library lib_pll was ignored
-Warning (20013): Ignored 317 assignments for entity "pll_0002" -- entity does not exist in design
-Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
-Info (204019): Generated file main.vo in folder "C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim//" for EDA simulation tool
-Info: Quartus Prime EDA Netlist Writer was successful. 0 errors, 6 warnings
-    Info: Peak virtual memory: 4758 megabytes
-    Info: Processing ended: Tue Sep 30 19:55:09 2025
-    Info: Elapsed time: 00:00:00
-    Info: Total CPU time (on all processors): 00:00:01
-
+Info: *******************************************************************Info: Running Quartus Prime EDA Netlist Writer    Info: Version 24.1std.0 Build 1077 03/04/2025 SC Lite Edition    Info: Copyright (C) 2025  Altera Corporation. All rights reserved.    Info: Your use of Altera Corporation's design tools, logic functions     Info: and other software and tools, and any partner logic     Info: functions, and any output files from any of the foregoing     Info: (including device programming or simulation files), and any     Info: associated documentation or information are expressly subject     Info: to the terms and conditions of the Altera Program License     Info: Subscription Agreement, the Altera Quartus Prime License Agreement,    Info: the Altera IP License Agreement, or other applicable license    Info: agreement, including, without limitation, that your use is for    Info: the sole purpose of programming logic devices manufactured by    Info: Altera and sold by Altera or its authorized distributors.  Please    Info: refer to the Altera Software License Subscription Agreements     Info: on the Quartus Prime software download page.    Info: Processing started: Thu Oct  2 05:51:31 2025Info: Command: quartus_eda --write_settings_files=off --simulation=on --functional=on --flatten_buses=off --tool=modelsim_oem --format=verilog --output_directory=/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/ SD-Coprocessor -c mainWarning (20013): Ignored 16 assignments for entity "pll" -- entity does not exist in design    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_NAME altera_pll -entity pll -sip aux_files/pll.sip -library lib_pll was ignored    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_VERSION 24.1 -entity pll -sip aux_files/pll.sip -library lib_pll was ignored    Warning (20014): Assignment for entity set_global_assignment -name IP_TOOL_ENV mwpim -entity pll -sip aux_files/pll.sip -library lib_pll was ignoredWarning (20013): Ignored 317 assignments for entity "pll_0002" -- entity does not exist in designWarning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.Info (204019): Generated file main.vo in folder "/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim//" for EDA simulation toolInfo: Quartus Prime EDA Netlist Writer was successful. 0 errors, 6 warnings    Info: Peak virtual memory: 665 megabytes    Info: Processing ended: Thu Oct  2 05:51:32 2025    Info: Elapsed time: 00:00:01    Info: Total CPU time (on all processors): 00:00:00
 Completed successfully. 
 
 **** Generating the ModelSim .do script ****
 
-C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor.do generated.
+/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor.do generated.
 
 Completed successfully. 
 
 **** Running the ModelSim simulation ****
 
-C:/intelFPGA/20.1/modelsim_ase/win32aloem/vsim -c -do SD-Coprocessor.do
+/opt/intelFPGA_lite/20.1/modelsim_ase/bin/vsim -c -do SD-Coprocessor.do
 
 Reading pref.tcl
-
-
 # 2020.1
-
-
 # do SD-Coprocessor.do
-
 # ** Warning: (vlib-34) Library already exists at "work".
-
 # Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
-
-# Start time: 19:55:10 on Sep 30,2025
-# vlog -work work main.vo 
-
+# Start time: 05:51:32 on Oct 02,2025# vlog -work work main.vo 
 # -- Compiling module memory_control
-
-# 
-# Top level modules:
-
-# 	memory_control
-
-# End time: 19:55:10 on Sep 30,2025, Elapsed time: 0:00:00
-# Errors: 0, Warnings: 0
-
-# Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
-
-# Start time: 19:55:10 on Sep 30,2025
+# # Top level modules:
+# 	memory_control# End time: 05:51:32 on Oct 02,2025, Elapsed time: 0:00:00# Errors: 0, Warnings: 0
+# Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020# Start time: 05:51:32 on Oct 02,2025
 # vlog -work work Waveform.vwf.vt 
-
 # -- Compiling module memory_control_vlg_vec_tst
-
 # 
-
-# Top level modules:
-# 	memory_control_vlg_vec_tst
-
-# End time: 19:55:10 on Sep 30,2025, Elapsed time: 0:00:00
-
-# Errors: 0, Warnings: 0
-
-# vsim -c -t 1ps -L cyclonev_ver -L altera_ver -L altera_mf_ver -L 220model_ver -L sgate_ver -L altera_lnsim_ver work.memory_control_vlg_vec_tst 
-# Start time: 19:55:10 on Sep 30,2025
-# Loading work.memory_control_vlg_vec_tst
-# Loading work.memory_control
-# Loading cyclonev_ver.cyclonev_io_obuf
-# Loading cyclonev_ver.cyclonev_io_ibuf
-# Loading cyclonev_ver.cyclonev_clkena
-# Loading cyclonev_ver.cyclonev_lcell_comb
-# Loading altera_ver.dffeas
-# Loading altera_ver.PRIM_GDFF_LOW
-
+# Top level modules:# 	memory_control_vlg_vec_tst# End time: 05:51:32 on Oct 02,2025, Elapsed time: 0:00:00# Errors: 0, Warnings: 0
+# vsim -c -t 1ps -L cyclonev_ver -L altera_ver -L altera_mf_ver -L 220model_ver -L sgate_ver -L altera_lnsim_ver work.memory_control_vlg_vec_tst # Start time: 05:51:32 on Oct 02,2025# Loading work.memory_control_vlg_vec_tst# Loading work.memory_control# Loading cyclonev_ver.cyclonev_io_obuf# Loading cyclonev_ver.cyclonev_io_ibuf# Loading cyclonev_ver.cyclonev_clkena# Loading cyclonev_ver.cyclonev_lcell_comb# Loading altera_ver.dffeas# Loading altera_ver.PRIM_GDFF_LOW
 # after#25
-
-# ** Note: $finish    : Waveform.vwf.vt(59)
-#    Time: 1 us  Iteration: 0  Instance: /memory_control_vlg_vec_tst
-
-# End time: 19:55:11 on Sep 30,2025, Elapsed time: 0:00:01
-# Errors: 0, Warnings: 0
-
+# ** Note: $finish    : Waveform.vwf.vt(59)#    Time: 1 us  Iteration: 0  Instance: /memory_control_vlg_vec_tst
+# End time: 05:51:32 on Oct 02,2025, Elapsed time: 0:00:00# Errors: 0, Warnings: 0
 Completed successfully. 
 
 **** Converting ModelSim VCD to vector waveform ****
 
-Reading C:/Users/maiko/Documents/Problema-SD-2025-2/Waveform.vwf...
+Reading /run/media/kake/disco_2/SD/Problema-SD-2025-2/Waveform.vwf...
 
-Reading C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor.msim.vcd...
+Reading /run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor.msim.vcd...
 
 Processing channel transitions... 
 
-Writing the resulting VWF to C:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor_20250930195511.sim.vwf
+Writing the resulting VWF to /run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim/SD-Coprocessor_20251002055132.sim.vwf
 
 Finished VCD to VWF conversion.
 

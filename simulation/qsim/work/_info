@@ -9,49 +9,95 @@ z2
 !i10f 100
 cModel Technology
 dC:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim
-vmemory_control
-Z0 !s110 1759395092
+vmain
+Z0 !s110 1759410593
 !i10b 1
-!s100 9`Ln_LYf>e@UH_lNjA`8@0
+!s100 mJ9X9HfRDIS4Bm89a>LkI0
 Z1 !s11b Dg1SIo80bB@j0V0VzS_@n1
-IL>i`?WHH]]?`<7nbdodfE2
+I:<MOjge`b]_ADCGB<G;CD3
 Z2 VDg1SIo80bB@j0V0VzS_@n1
 Z3 d/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim
-w1759395092
-8main.vo
-Fmain.vo
-!i122 34
-L0 32 21901
-Z4 OV;L;2020.1;71
+w1759410592
+Z4 8main.vo
+Z5 Fmain.vo
+!i122 78
+L0 32 66045
+Z6 OV;L;2020.1;71
 r1
 !s85 0
 31
-Z5 !s108 1759395092.000000
-!s107 main.vo|
-!s90 -work|work|main.vo|
+Z7 !s108 1759410593.000000
+Z8 !s107 main.vo|
+Z9 !s90 -work|work|main.vo|
 !i113 1
-Z6 o-work work
-Z7 tCvgOpt 0
-vmemory_control_vlg_vec_tst
+Z10 o-work work
+Z11 tCvgOpt 0
+vmain_vlg_vec_tst
 R0
 !i10b 1
-!s100 SzX2:hS=@Xh:827ij2X[21
+!s100 e6DW1oIj0Hf<1L?KS<Pf43
 R1
-IfL:BH;UU?DzJ2o9mE4`711
+I8`=XfU4KU9M?NST@XRA=f2
 R2
 R3
-w1759395091
-8Waveform.vwf.vt
-FWaveform.vwf.vt
-!i122 35
-L0 30 168
-R4
+w1759410591
+Z12 8Waveform.vwf.vt
+Z13 FWaveform.vwf.vt
+!i122 79
+L0 30 208
+R6
 r1
 !s85 0
 31
-R5
-!s107 Waveform.vwf.vt|
-!s90 -work|work|Waveform.vwf.vt|
-!i113 1
-R6
 R7
+Z14 !s107 Waveform.vwf.vt|
+Z15 !s90 -work|work|Waveform.vwf.vt|
+!i113 1
+R10
+R11
+vmemory_control
+Z16 !s110 1759406398
+!i10b 1
+!s100 _DVhc]ZWaN8`U[zc[TSn91
+R1
+IJMkdZ`eOCmg2d;CbJXMNT3
+R2
+R3
+Z17 w1759406397
+R4
+R5
+!i122 68
+L0 32 21107
+R6
+r1
+!s85 0
+31
+Z18 !s108 1759406398.000000
+R8
+R9
+!i113 1
+R10
+R11
+vmemory_control_vlg_vec_tst
+R16
+!i10b 1
+!s100 @EH;@7^PSSAWJ8;?7zX1:0
+R1
+I`8Fk6aM;9EAc55oaJk=nY3
+R2
+R3
+R17
+R12
+R13
+!i122 69
+L0 30 168
+R6
+r1
+!s85 0
+31
+R18
+R14
+R15
+!i113 1
+R10
+R11

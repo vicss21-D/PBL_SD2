@@ -56,6 +56,9 @@ module memory_control (
     reg [9:0] count_x_new, count_y_new, count_x_old, count_y_old;
     reg [17:0] addr_base_wr, addr_base_rd;
 
+    reg [2:0] step;
+    reg [19:0] offset;
+
 
     always @(posedge clock) begin
 
@@ -69,13 +72,11 @@ module memory_control (
                     count_y_new <= 10'b0;
                     if (enable == 1'b1 && !done) begin
                         state <= operation;
-
-                        
                     end else  begin
                         done <= (enable) ? 1'b0:1'b1;
                         state <= IDLE;
                         case (operation)
-                            NH_ALG: begin
+                            NHI_ALG: begin  //algoritmo esta pronto
                                 if (current_zoom == 3'b101) begin
                                     addr_base_rd <= 18'd96000;
                                     addr_base_wr <= 18'd153600;
@@ -86,7 +87,7 @@ module memory_control (
                                     addr_out <= 18'd19200;
                                 end
                             end
-                            PR_ALG: begin
+                            PR_ALG: begin //algoritmo está pronto
                                 if (current_zoom == 3'b101) begin
                                     addr_base_rd <= 18'd96000;
                                     addr_base_wr <= 18'd153600;
@@ -102,21 +103,27 @@ module memory_control (
                                     addr_base_rd <= 18'd121600;
                                     addr_base_wr <= 18'd182400;
                                     addr_out <= 18'd121600;
+                                    offset <= 19'd19280;
                                 end else begin
                                     addr_base_rd <= 18'd0;
                                     addr_base_wr <= 18'd96000;
                                     addr_out <= 18'd0;
+                                    offset <= 19'd0;
                                 end
                             end 
-                            NH_ALG: begin 
+                            NH_ALG: begin //algoritmo esta pronto
                                 if (current_zoom == 3'b010) begin
                                     addr_base_rd <= 18'd0;
                                     addr_base_wr <= 18'd182400;
                                     addr_out <= 18'd0;
+                                    step <= 3'd4;
+                                    offset <= 19'd28920;
                                 end else begin
                                     addr_base_rd <= 18'd0;
                                     addr_base_wr <= 18'd96000;
                                     addr_out <= 18'd0;
+                                    step <= 3'd2;
+                                    offset <= 19'd19280;
                                 end
                             end
                             default: begin
@@ -220,7 +227,7 @@ module memory_control (
                 PR_ALG: begin //TODO: Replicar esse comportamente nos outros
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd5;//19'd19200;
+                        num_steps_needed <= 19'd19200;
                         state <= WAIT_WR_RD;
                         wr_enable <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
@@ -231,13 +238,6 @@ module memory_control (
                         count_y_new <= 10'd00; //configura os valores da nova imagem para o começo
                         has_alg_on_exec <= 1'b1;
                         addr_out <= addr_base_wr;
-                        // if (current_zoom == 3'b101) begin
-                        //     addr_base_rd <= 18'd96000;
-                        //     addr_base_wr <= 18'd153600;
-                        // end else begin
-                        //     addr_base_rd <= 18'd19200;
-                        //     addr_base_wr <= 18'd76800;
-                        // end
                     end else begin
                         case(operation_step_counter)
                             3'b000: begin
@@ -246,9 +246,7 @@ module memory_control (
                                 wr_enable <= 1'b1;
                                 addr_out <= addr_base_wr +(320*count_y_new) + count_x_new;
                                 count_x_new <= count_x_new + 1'b1; //incrementa a coluna
-                                
                                 state <= WAIT_WR_RD;
-                                
                             end
                             3'b001: begin
                                 operation_step_counter <= operation_step_counter + 1'b1; //incrementa o contador da operação
@@ -304,44 +302,35 @@ module memory_control (
                 NHI_ALG: begin
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd5;//19'd76800; //configura o numero de passos necessarios
+                        num_steps_needed <= 19'd76800; //configura o numero de passos necessarios
                         has_alg_on_exec <= 1'b1;
                         state <= WAIT_WR_RD;
                         wr_rd_timer_counter <= 2'b00;
                         operation_step_counter <= 3'b001;
+                        addr_out <= addr_base_wr;
                         wr_enable <= 1'b1;
-                        count_x_old <= 10'd80; //configura o range que será lido da imagem anterior
-                        count_y_old <= 10'd60; //configura o range que será lido da imagem anterior
-                        count_x_new <= 10'd00; //configura os valores da nova imagem para o começo
+                        count_x_new <= 10'd01; //configura os valores da nova imagem para o começo
                         count_y_new <= 10'd00; //configura os valores da nova imagem para o começo
-                        // if (current_zoom == 3'b101) begin
-                        //     addr_base_rd <= 18'd96000;
-                        //     addr_base_wr <= 18'd153600;
-                        // end else begin
-                        //     addr_base_rd <= 18'd19200;
-                        //     addr_base_wr <= 18'd76800;
-                        // end
                     end
                     else if (operation_step_counter == 3'b001) begin
                         wr_rd_timer_counter <= 2'b00;
                         algorithm_step_counter <= algorithm_step_counter + 1'b1; //incrementa o contador de passos
                         operation_step_counter <= 3'b000; //reinicia pro passo 1
-                        addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320); // endereço onde será escrito
+                        addr_out <= addr_base_rd + ((count_x_new)>>1) + ((count_y_new*320)>>1);  //calcula o endereço do pixel a ser lido
                         wr_enable <= 1'b0; //habilita o sinal de escrita
                         state <= WAIT_WR_RD; //vai para o estado de aguardar o fim da operação de escrita
+                    end else if (operation_step_counter == 3'b000) begin
+                        wr_enable <= 1'b1;
+                        wr_rd_timer_counter <= 2'b00;
+                        operation_step_counter <= 3'b001; //incrementa um passo
+                        addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320); // endereço onde será escrito
+                        state <= WAIT_WR_RD; //vai apra o estado de leitura
                         if (count_x_new == 10'd319) begin //se estiver na borda da imagem
                             count_y_new <= count_y_new + 1'b1; //incrementa uma coluna
                             count_x_new <= 10'b0; //volta pro começo da imagem
                         end else begin
                             count_x_new <= count_x_new + 1'b1;
                         end
-                    
-                    end else if (operation_step_counter == 3'b000) begin
-                        wr_enable <= 1'b1;
-                        wr_rd_timer_counter <= 2'b00;
-                        operation_step_counter <= 3'b001; //incrementa um passo
-                        addr_out <= addr_base_rd + ((count_x_new)>>1) + ((count_y_new*320)>>1);  //calcula o endereço do pixel a ser lido
-                        state <= WAIT_WR_RD; //vai apra o estado de leitura
                     end
                     last_op <= NHI_ALG; //guarda "endereço" da ultima operação
                 end
@@ -349,119 +338,114 @@ module memory_control (
                 NH_ALG: begin
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= 19'd5;//19'd38400; 
+                        num_steps_needed <= 19'd38400; 
                         has_alg_on_exec <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
                         wr_enable <= 1'b1;
+                        addr_out <= addr_base_wr; // endereço onde será escrito
                         state <= WAIT_WR_RD;
                         operation_step_counter <= 3'b001;
-                        count_x_old <= 10'd00; //configura o range que será lido da imagem anterior
+                        count_x_old <= step; //configura o range que será lido da imagem anterior
                         count_y_old <= 10'd00; //configura o range que será lido da imagem anterior
-                        count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //configura os valores da nova imagem para o começo
+                        count_x_new <= (current_zoom != 3'b010) ? 10'd81:10'd121; //configura os valores da nova imagem para o começo
                         count_y_new <= (current_zoom != 3'b010) ? 10'd60:10'd90; //configura os valores da nova imagem para o começo
-                        // if (current_zoom == 3'b010) begin
-                        //     addr_base_rd <= 18'd0;
-                        //     addr_base_wr <= 18'd182400;
-                        // end else begin
-                        //     addr_base_rd <= 18'd0;
-                        //     addr_base_wr <= 18'd96000;
-                        // end
                     end
                     else if (operation_step_counter == 3'b001) begin
                         wr_rd_timer_counter <= 2'b00;
                         algorithm_step_counter <= algorithm_step_counter + 1'b1; //incrementa o contador de passos
                         operation_step_counter <= 3'b000; //reinicia pro passo 1
-                        addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320); // endereço onde será escrito
+                        addr_out <= addr_base_rd + (count_x_old) + ((count_y_old*320));  //calcula o endereço do pixel a ser lido
                         wr_enable <= 1'b0; //habilita o sinal de escrita
                         state <= WAIT_WR_RD; //vai para o estado de aguardar o fim da operação de escrita
-                        if (count_x_new == 10'd239) begin //se estiver na borda da imagem
-                            count_y_new <= count_y_new + 1'b1; //incrementa uma coluna
-                            count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //volta pro começo da imagem
-                            count_y_old <= count_y_old + (current_zoom != 3'b010) ? 10'd2:10'd4;
-                            count_x_old <= 10'd0;
-                        end else begin
-                            count_x_new <= count_x_new + 1'b1;
-                            count_x_old <= count_x_old + (current_zoom != 3'b010) ? 10'd2:10'd4;
-                        end
 
                     end else if (operation_step_counter == 3'b000) begin
                         wr_rd_timer_counter <= 2'b00;
                         wr_enable <= 1'b1;
                         operation_step_counter <= 3'b001; //incrementa um passo
-                        addr_out <= addr_base_rd + (count_x_old) + ((count_y_old*320));  //calcula o endereço do pixel a ser lido
+                        addr_out <= addr_base_wr + (count_x_new) + ((count_y_new)*320) - offset; // endereço onde será escrito
+                        
                         state <= WAIT_WR_RD; //vai apra o estado de leitura
+                        if (count_x_new == 10'd239) begin //se estiver na borda da imagem
+                            count_y_new <= count_y_new + 1'b1; //incrementa uma coluna
+                            count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //volta pro começo da imagem
+                            count_y_old <= count_y_old + step;
+                            count_x_old <= 10'd0;
+                        end else begin
+                            count_x_new <= count_x_new + 1'b1;
+                            count_x_old <= count_x_old + step;
+                        end
                     end
                     last_op <= NH_ALG;
                 end
 
-                BA_ALG: begin 
+                BA_ALG: begin //algoritmo esta pronto
                     done <= 1'b0;
                     if (!has_alg_on_exec) begin // se não tem um algoritmo em execução = primeira execução
-                        num_steps_needed <= (current_zoom != 3'b010) ? /*19'd30000*/19'd5:19'd5/*19'd19200*/;
+                        num_steps_needed <= (current_zoom != 3'b010) ? 19'd30000:19'd19200;
                         state <= WAIT_WR_RD;
                         has_alg_on_exec <= 1'b1;
                         wr_rd_timer_counter <= 2'b00;
                         operation_step_counter <= 3'b001;
+                        addr_out <= addr_base_rd + 1'b1;
                         count_x_old <= (current_zoom != 3'b010) ? 10'd00:10'd80; //configura o range que será lido da imagem anterior
-                        count_y_old <= (current_zoom != 3'b010) ? 10'd00:10'd60; //configura o range que será lido da imagem anterior
+                        count_y_old <= (current_zoom != 3'b010) ? 10'd01:10'd61; //configura o range que será lido da imagem anterior
                         count_x_new <= (current_zoom != 3'b010) ? 10'd80:10'd120; //configura os valores da nova imagem para o começo
                         count_y_new <= (current_zoom != 3'b010) ? 10'd60:10'd90; //configura os valores da nova imagem para o começo
-                        // if (current_zoom == 3'b010) begin
-                        //     addr_base_rd <= 18'd121600;
-                        //     addr_base_wr <= 18'd182400;
-                        // end else begin
-                        //     addr_base_rd <= 18'd0;
-                        //     addr_base_wr <= 18'd96000;
-                        // end
                     end else begin
                         case(operation_step_counter)
                             3'b000: begin //realizar a primeira leitura
                                 operation_step_counter <= operation_step_counter + 1'b1;
-                                if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin
-                                    count_y_old <= count_y_old + 1'b1; //incrementa uma linha
-                                    count_x_old <= (current_zoom != 3'b010) ? 10'd00:10'd80;             // volta pra primeira coluna
-                                    addr_out <= addr_base_rd + (count_y_old*320) + ((current_zoom != 3'b010) ? 10'd00:10'd80); //leitura na imagem antiga
-                                    //TODO: Verificar se o bloco acima funciona
-                                end else begin
-                                    count_x_old <= count_x_old + 1'b1;
-                                    addr_out <= addr_base_rd + (count_y_old*320) + count_x_old; //leitura do endereço na imagem antiga
-                                end
+                                addr_out <= addr_base_rd +(320*count_y_old) + count_x_old - offset; 
+                                count_x_old <= count_x_old - 1'b1;
+                                count_y_old <= count_y_old + 1'b1;
+                                
                                 wr_rd_timer_counter <= 2'b00;
                                 state <= WAIT_WR_RD;
                                 
                             end
                             3'b001: begin //realizar a segunda leitura
                                 operation_step_counter <= operation_step_counter + 1'b1; //incrementa o contador da operação
-                                addr_out <= addr_base_rd +(320*count_y_old) + count_x_old+1; 
+                                addr_out <= addr_base_rd +(320*count_y_old) + count_x_old - offset; 
                                 state <= WAIT_WR_RD;
+                                count_x_old <= count_x_old + 1'b1;
                                 wr_rd_timer_counter <= 2'b00;
                             end
                             3'b010: begin //realizar a terceira leitura
                                 operation_step_counter <= operation_step_counter + 1'b1; //incrementa o contador da operação
-                                addr_out <= addr_base_rd +(320*(count_y_old+1)) + count_x_old; 
+                                addr_out <= addr_base_rd +(320*(count_y_old)) + count_x_old -offset;
                                 state <= WAIT_WR_RD;
+                                if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin
+                                    count_y_old <= count_y_old + 1'b1; //incrementa duas linha
+                                    count_x_old <= (current_zoom != 3'b010) ? 10'd00:10'd80;             // volta pra primeira coluna
+                                end else begin
+                                    count_x_old <= count_x_old + 1'b1;
+                                    count_y_old <= count_y_old - 1'b1;
+                                end
+                                count_x_old <= count_x_old + 1'b1;
+                                count_y_old <= count_y_old - 1'b1;
                                 wr_rd_timer_counter <= 2'b00;
                             end
                             3'b011: begin //realizar a quarta leitura
                                 operation_step_counter <= operation_step_counter + 1'b1; //incrementa o contador da operação
-                                addr_out <= addr_base_rd +(320*count_y_old+1) + count_x_old+1; 
+                                addr_out <=addr_base_wr +(320*count_y_new) + count_x_new; //acessa o ultimo endereço escrito +1
                                 state <= WAIT_WR_RD;
-                                count_x_old <= count_x_old + 2'd2; //incrementa a coluna
                                 wr_rd_timer_counter <= 2'b00;
                                 wr_enable <= 1'b1;
+                                if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin //caso tenha chegado na borda
+                                    count_y_new <= count_y_new + 1'b1;
+                                    count_x_new <= (current_zoom != 3'b010) ? 10'd60:10'd90;
+                                end else begin
+                                    count_x_new <= count_x_new + 1'b1;
+                                end
                             end
                             3'b100: begin //realizar a escrita
                                 algorithm_step_counter <= algorithm_step_counter + 1'b1; // incrementa um a contagem de passos
                                 operation_step_counter <= 3'b000; //reseta o contador da operação
-                                addr_out <=addr_base_wr +(320*count_y_new) + count_x_new; //acessa o ultimo endereço escrito +1
+                                addr_out <=addr_base_rd +(320*count_y_old) + count_x_old - offset; //acessa o ultimo endereço escrito +1
                                 wr_enable <= 1'b0; //habilita a escrita
                                 state <= WAIT_WR_RD; //vai pro estado de aguardar a escrita acontecer
-
-                                if ((count_x_new == 10'd199 && current_zoom != 3'b010) || (count_x_new == 10'd319 && current_zoom == 3'b010)) begin //caso tenha chegado na borda da imagem incrementa uma linha no x e desce para a fileira de baixo
-                                    count_y_new <= count_y_new + 1'b1;
-                                    count_x_new <= (current_zoom != 3'b010) ? 10'd60:10'd90;
-                                end
                                 wr_rd_timer_counter <= 2'b00;
+                                count_x_old <= count_x_old + 1'b1;
                             end
                         endcase
                     end

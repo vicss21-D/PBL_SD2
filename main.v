@@ -6,6 +6,10 @@ module main(
     MEM_ADDR,
     ENABLE,
 
+    addr_in_memory,
+    data_in_memory,
+    op_count,
+
     DATA_OUT,
     FLAG_DONE,
     VGA_R,
@@ -24,7 +28,7 @@ module main(
     input [17:0] MEM_ADDR;
     input ENABLE;
 
-    output FLAG_DONE;
+    output reg FLAG_DONE;
     output reg [7:0] DATA_OUT;
     output [7:0] VGA_R;
     output [7:0] VGA_B;
@@ -34,9 +38,17 @@ module main(
     output VGA_V_SYNC_N;
     output VGA_CLK;
     output VGA_SYNC;
+    output [18:0] addr_in_memory;
+    output [7:0] data_in_memory;
+    output [2:0] op_count;
 
 
-	assign FLAG_DONE = addr_control_done;
+    assign op_count = counter_op;
+    assign data_in_memory = data_out_mem;
+    assign addr_in_memory = addr_from_memory_control;
+
+
+	//assign FLAG_DONE = addr_control_done;
 
     parameter ORIGINAL_WIDTH = 320;
     parameter ORIGINAL_HEIGHT = 240;
@@ -119,241 +131,38 @@ module main(
     //maquina de estados auxiliar para a execução dos algoritmos
 
     wire [2:0] counter_op;
-	 reg inside_box;
-	 
-	 reg [17:0] addr_base;
+    reg inside_box;	 
+    reg [17:0] addr_base;
 
-     reg [16:0] counter_addr;
-	 
-	 always @(negedge clk_25_vga) begin
-    if (next_y < 159 && next_x < 119) begin
-        counter_addr <= 0;
-    end else if(next_y >= 119 && next_y < 360) begin
-        if (next_x >= 159 && next_x < 480) begin
-            addr_from_vga <= addr_base + counter_addr;
-            inside_box <= 1'b1;
-            counter_addr <= counter_addr + 1'b1;
-        end else begin
-            addr_from_vga <= 0;
-            inside_box <= 1'b0;
-        end
-    end else begin
-            addr_from_vga <= 0;
-            inside_box <= 1'b0;
+    reg [16:0] counter_addr;
+
+    always @(posedge clk_100)   begin
+
+        case (uc_state)
+            IDLE: begin
+                if (enable_pulse) begin
+                    
+                end
+            end 
+            default: begin
+				
+				end
+        endcase
+
     end
-	end
-
-    always @(posedge clk_100) begin
-        if (has_alg_on_exec) begin
-            case (last_instruction)
-                ZOOM_IN_VP: begin
-                    if (counter_op_delayed == 3'b000) begin
-                        data_read_from_memory[7:0] <= data_out_mem;
-                    end else begin
-                        data_in_mem <= data_read_from_memory[7:0];
-                    end
-                end
-                ZOOM_IN_RP: begin
-                    if (counter_op_delayed == 3'b000) begin
-                        data_read_from_memory[7:0] <= data_out_mem;
-                        enable_rp <= 1'b1;
-                    end else begin
-                        enable_rp <= 1'b0;
-                        if (counter_op_delayed == 3'b001) begin
-                            data_in_mem <= data_from_pixel_rep[7:0];
-                        end else if (counter_op_delayed == 3'b010) begin
-                            data_in_mem <= data_from_pixel_rep[15:8];
-                        end else if (counter_op_delayed == 3'b011) begin
-                            data_in_mem <= data_from_pixel_rep[23:16];
-                        end else if (counter_op_delayed == 3'b100) begin
-                            data_in_mem <= data_from_pixel_rep[31:24];
-                        end else begin
-                            data_in_mem <= data_read_from_memory[7:0];
-                        end
-                    end
-                end
-                ZOOM_OUT_MP: begin
-                    if (counter_op_delayed == 3'b000) begin
-                        data_read_from_memory[7:0] <= data_out_mem;
-                    end else if (counter_op_delayed == 3'b001) begin
-                        data_read_from_memory[15:8] <= data_out_mem;
-                    end else if (counter_op_delayed == 3'b010) begin
-                        data_read_from_memory[23:16] <= data_out_mem;
-                    end else if (counter_op_delayed == 3'b011) begin
-                        data_read_from_memory[31:24] <= data_out_mem;
-                        enable_mp <= 1'b1;
-                    end else begin
-                        enable_mp <= 1'b0;
-                        data_in_mem <= data_from_block_avg;
-                    end
-                end
-                ZOOM_OUT_VD: begin
-                    if (counter_op_delayed == 3'b000) begin
-                        data_read_from_memory[7:0] <= data_out_mem;
-                    end else begin
-                        data_in_mem <= data_read_from_memory[7:0];
-                    end
-                end
-                STORE: begin
-                    data_in_mem <= DATA_IN;
-                end
-                default: begin
-                    data_in_mem <= data_out_mem;
-
-                end
-            endcase
-        end
-    end
-
     //algoritmos
-     zoom_in_two zoom_in_pr(
-         .enable(enable_rp),
-         .data_in(data_read_from_memory[7:0]),
-         .data_out(data_from_pixel_rep)
-     );
+    zoom_in_two zoom_in_pr(
+        .enable(enable_rp),
+        .data_in(data_read_from_memory[7:0]),
+        .data_out(data_from_pixel_rep)
+    );
 
     zoom_out_one zoom_out_mp(
         .enable(enable_mp),
-             .data_in(data_read_from_memory),
-           .data_out(data_from_block_avg)
+        .data_in(data_read_from_memory),
+        .data_out(data_from_block_avg)
     );
 
-    reg [2:0] counter_op_delayed;
-
-reg [2:0] next_zoom;
-
-    //maquina de estados da unidade de controle
-    always @(posedge clk_100) begin //TODO: Adicionar parte que troca o algoritmo pra seu oposto a depender da quantidade de zoom dado
-    counter_op_delayed <= counter_op;
-        case (uc_state)
-            IDLE: begin
-                if(enable_pulse) begin
-                    
-                    if (current_zoom == 3'b100) begin
-                        addr_base <= 18'b0;
-                    end else if (current_zoom == 3'b010) begin
-                        addr_base <= 18'd182400;
-                    end else if (current_zoom == 3'b001) begin
-                        addr_base <= 18'd96000;
-                    end else if (current_zoom == 3'b101) begin
-                        addr_base <= 18'd153600;
-                    end else if (current_zoom == 3'b110) begin
-                        addr_base <= 18'd76800;
-                    end else begin
-                        addr_base <= 18'b0;
-                    end
-                    
-                    if(INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
-                        last_instruction <= INSTRUCTION;
-                        uc_state <= READ_AND_WRITE;
-                        addr_to_memory_control  <= MEM_ADDR;
-                        has_alg_on_exec <= 1'b1;
-                    end else if (INSTRUCTION <=3'b110) begin
-                        last_instruction <= INSTRUCTION;
-                        uc_state <= ALGORITHM;
-                        has_alg_on_exec <= 1'b1;
-                        addr_control_enable <= 1'b1;
-                    end else begin
-                        last_instruction <= 3'b000;
-                        uc_state <= RESET;
-                        has_alg_on_exec <= 1'b0;
-                        addr_base <= 18'b0;
-                        addr_control_enable <= 1'b0;
-                    end
-
-                    case (last_instruction)
-                        ZOOM_IN_VP: begin
-                            if (current_zoom < 3'b100)
-                                last_instruction <= ZOOM_OUT_VD;
-                            else
-                                last_instruction <= ZOOM_IN_RP;
-                        end
-                        ZOOM_IN_RP: begin
-                            if (current_zoom < 3'b100)
-                            last_instruction <= ZOOM_OUT_MP;
-                            else
-                                last_instruction <= ZOOM_IN_RP;
-                        end
-                        ZOOM_OUT_MP: begin
-                            if (current_zoom > 3'b100) begin
-                                last_instruction <= ZOOM_IN_RP;
-                            end else begin
-                                last_instruction <= ZOOM_OUT_MP;
-                            end
-                        end
-                        ZOOM_OUT_VD: begin
-                            if (current_zoom > 3'b100) begin
-                                last_instruction <= ZOOM_IN_VP;
-                            end else begin
-                                last_instruction <= ZOOM_OUT_VD;
-                            end
-                        end
-                    endcase
-                end
-            end
-            READ_AND_WRITE: begin
-                if (addr_control_done) begin
-                    DATA_OUT <= data_out_mem;
-                    uc_state <= IDLE;
-                    addr_control_enable <= 1'b0;
-                end 
-                else begin
-                    uc_state <= READ_AND_WRITE;
-                    addr_control_enable <= 1'b1;
-                end
-            end
-            ALGORITHM: begin
-                if (addr_control_done) begin
-                    uc_state <= IDLE;
-                    addr_control_enable <= 1'b0;
-                    has_alg_on_exec <= 1'b0;
-                    // Calcula o próximo nível de zoom
-                    if (last_instruction == ZOOM_IN_RP || last_instruction == ZOOM_IN_VP) begin
-                        next_zoom = current_zoom + 1'b1;
-                    end else if (last_instruction == ZOOM_OUT_MP || last_instruction == ZOOM_OUT_VD) begin
-                        next_zoom = current_zoom - 1'b1;
-                    end else begin
-                        next_zoom = current_zoom;
-                    end
-
-                    // Atualiza o zoom para a próxima operação
-                    current_zoom <= next_zoom;
-
-                    // <-- CORREÇÃO 2: Atualiza o endereço base IMEDIATAMENTE com base no novo zoom
-                    case (next_zoom)
-                        3'b100: addr_base <= 18'b0;
-                        3'b010: addr_base <= 18'd182400;
-                        3'b001: addr_base <= 18'd96000;
-                        3'b101: addr_base <= 18'd153600;
-                        3'b110: addr_base <= 18'd76800;
-                        default: addr_base <= 18'b0;
-                    endcase
-                end else begin
-                    uc_state <= ALGORITHM;
-                    addr_control_enable <= 1'b1;
-                end
-            end
-            RESET: begin
-                current_zoom <= 3'b100;
-                uc_state <= IDLE;
-                addr_control_enable <= 1'b0;
-                has_alg_on_exec <= 1'b0;
-            end
-
-            default: begin
-                uc_state <= IDLE;
-            end
-        endcase
-
-        if (has_alg_on_exec) begin
-            mem_addr <= addr_from_memory_control;
-        end else begin
-            mem_addr <= addr_from_vga;
-        end
-
-    end
-
-    assign color_to_vga = (has_alg_on_exec) ? 8'b0 : ((inside_box) ? data_out_mem:8'b0);
 
     memory_control addr_control(
         .addr_base(addr_to_memory_control),
@@ -370,7 +179,7 @@ reg [2:0] next_zoom;
     //vga
     vga_module vga_out(
     .clock(clk_25_vga),     // 25 MHz
-    .reset(),     // Active high
+    .reset(addr_control_enable),     // Active high
     .color_in(color_to_vga), // Pixel color data (RRRGGGBB)
     .next_x(next_x),  // x-coordinate of NEXT pixel that will be drawn
     .next_y(next_y),  // y-coordinate of NEXT pixel that will be drawn

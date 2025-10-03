@@ -19,7 +19,7 @@
 // the top level entity of the current Quartus project .The user can use this   
 // testbench to simulate his design using a third-party simulation tool .       
 // *****************************************************************************
-// Generated on "10/02/2025 10:09:51"
+// Generated on "10/03/2025 09:53:22"
                                                                                 
 // Verilog Test Bench (with test vectors) for design :                          main
 // 
@@ -46,6 +46,9 @@ wire VGA_H_SYNC_N;
 wire [7:0] VGA_R;
 wire VGA_SYNC;
 wire VGA_V_SYNC_N;
+wire [18:0] addr_in_memory;
+wire [7:0] data_in_memory;
+wire [2:0] op_count;
 
 // assign statements (if any)                          
 main i1 (
@@ -64,7 +67,10 @@ main i1 (
 	.VGA_H_SYNC_N(VGA_H_SYNC_N),
 	.VGA_R(VGA_R),
 	.VGA_SYNC(VGA_SYNC),
-	.VGA_V_SYNC_N(VGA_V_SYNC_N)
+	.VGA_V_SYNC_N(VGA_V_SYNC_N),
+	.addr_in_memory(addr_in_memory),
+	.data_in_memory(data_in_memory),
+	.op_count(op_count)
 );
 initial 
 begin 
@@ -122,27 +128,29 @@ end
 // ENABLE
 initial
 begin
-	ENABLE = 1'b1;
-	ENABLE = #60000 1'b0;
-	ENABLE = #435000 1'b1;
-	ENABLE = #85000 1'b0;
+	ENABLE = 1'b0;
+	ENABLE = #10000 1'b1;
+	ENABLE = #30000 1'b0;
+	ENABLE = #40000 1'b1;
+	ENABLE = #20000 1'b0;
 end 
 // INSTRUCTION[ 2 ]
 initial
 begin
-	INSTRUCTION[2] = 1'b0;
+	INSTRUCTION[2] = 1'b1;
+	INSTRUCTION[2] = #160000 1'b0;
 end 
 // INSTRUCTION[ 1 ]
 initial
 begin
 	INSTRUCTION[1] = 1'b1;
-	INSTRUCTION[1] = #500000 1'b0;
+	INSTRUCTION[1] = #80000 1'b0;
 end 
 // INSTRUCTION[ 0 ]
 initial
 begin
-	INSTRUCTION[0] = 1'b0;
-	INSTRUCTION[0] = #500000 1'b1;
+	INSTRUCTION[0] = 1'b1;
+	INSTRUCTION[0] = #80000 1'b0;
 end 
 // MEM_ADDR[ 17 ]
 initial

@@ -10,23 +10,23 @@ z2
 cModel Technology
 dC:/Users/maiko/Documents/Problema-SD-2025-2/simulation/qsim
 vmain
-Z0 !s110 1759496005
+Z0 !s110 1759522223
 !i10b 1
-!s100 =1N:VddE3Y@:7aAZWb=[a3
+!s100 Qz2m?bj<neESm55A;e0=33
 Z1 !s11b Dg1SIo80bB@j0V0VzS_@n1
-I1W=4^hK5K<?6aP]mceQ]?0
+IIQ64^3VTHB1;P0FOm1bCj0
 Z2 VDg1SIo80bB@j0V0VzS_@n1
 Z3 d/run/media/kake/disco_2/SD/Problema-SD-2025-2/simulation/qsim
-w1759496004
+w1759522222
 Z4 8main.vo
 Z5 Fmain.vo
-!i122 84
-L0 32 66375
+!i122 138
+L0 32 53186
 Z6 OV;L;2020.1;71
 r1
 !s85 0
 31
-Z7 !s108 1759496005.000000
+Z7 !s108 1759522223.000000
 Z8 !s107 main.vo|
 Z9 !s90 -work|work|main.vo|
 !i113 1
@@ -35,16 +35,16 @@ Z11 tCvgOpt 0
 vmain_vlg_vec_tst
 R0
 !i10b 1
-!s100 2:27kl927Q22_Hhmbh=m01
+!s100 1m63A9MkacMImmZab@FeM2
 R1
-I01CkX^z;HIcDFAYhPl:J93
+I0naiWnSmjZ<c=fJ5>d00P2
 R2
 R3
-w1759496002
+w1759522221
 8Waveform.vwf.vt
 FWaveform.vwf.vt
-!i122 85
-L0 30 216
+!i122 139
+L0 30 219
 R6
 r1
 !s85 0

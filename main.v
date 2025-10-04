@@ -9,9 +9,14 @@ module main(
     addr_in_memory,
     data_in_memory,
     op_count,
+    addr_control_done,
+    
 
     DATA_OUT,
     FLAG_DONE,
+    FLAG_ERROR,
+    FLAG_ZOOM_MAX,
+    FLAG_ZOOM_MIN,
     VGA_R,
     VGA_B,
     VGA_G,
@@ -29,6 +34,9 @@ module main(
     input ENABLE;
 
     output reg FLAG_DONE;
+    output reg FLAG_ERROR;
+    output reg FLAG_ZOOM_MAX;
+    output reg FLAG_ZOOM_MIN;
     output reg [7:0] DATA_OUT;
     output [7:0] VGA_R;
     output [7:0] VGA_B;
@@ -43,7 +51,7 @@ module main(
     output [2:0] op_count;
 
 
-    assign op_count = counter_op;
+    //assign op_count = counter_op;
     assign data_in_memory = data_out_mem;
     assign addr_in_memory = addr_from_memory_control;
 
@@ -110,7 +118,7 @@ module main(
 
     reg [1:0] uc_state;
     reg addr_control_enable;
-    wire addr_control_done;
+    /*wire*/output addr_control_done;
     reg enable_mp, enable_rp;
 
     reg [2:0] last_instruction; // realizar instruções em cima
@@ -140,10 +148,143 @@ module main(
 
         case (uc_state)
             IDLE: begin
-                if (enable_pulse) begin
-                    
+                if (ENABLE) begin
+                    addr_base <= MEM_ADDR;
+                    case (INSTRUCTION)
+                        LOAD: begin
+                            uc_state <= READ_AND_WRITE;
+                            last_instruction <= LOAD;
+                        end
+                        STORE: begin
+                            uc_state <= READ_AND_WRITE;
+                            last_instruction <= STORE;
+                        end
+                        ZOOM_IN_VP: begin
+                            addr_control_enable <= 1'b1;
+                            uc_state <= ALGORITHM;
+                            last_instruction <= ZOOM_IN_VP;
+                        end
+                        ZOOM_IN_RP: begin
+                            addr_control_enable <= 1'b1;
+                            uc_state <= ALGORITHM;
+                            last_instruction <= ZOOM_IN_RP;
+                        end
+                        ZOOM_OUT_MP: begin
+                            addr_control_enable <= 1'b1;
+                            uc_state <= ALGORITHM;
+                            last_instruction <= ZOOM_OUT_MP;
+                        end
+                        ZOOM_OUT_VD: begin
+                            addr_control_enable <= 1'b1;
+                            uc_state <= ALGORITHM;
+                            last_instruction <= ZOOM_OUT_VD;
+                        end
+                        NOP: begin
+                            uc_state <= IDLE;
+                            last_instruction <= NOP;
+                        end
+                        RESET_INST: begin
+                            uc_state <= RESET;
+                            last_instruction <= RESET_INST;
+                        end
+                        default: begin
+                            uc_state <= IDLE;
+                            last_instruction <= NOP;
+                        end
+                    endcase
                 end
-            end 
+            end
+            READ_AND_WRITE: begin
+                FLAG_DONE <= 1'b0;
+                case(last_instruction)
+                    LOAD: begin
+                        addr_to_memory_control <= addr_base;
+
+                        addr_control_enable <= 1'b1;
+
+                        if(addr_control_done) begin
+                            uc_state <= IDLE;
+                            DATA_OUT <= data_out_mem;
+                            FLAG_DONE <= 1'b1;
+                            addr_control_enable <= 1'b0;
+                        end else begin
+                            uc_state <= READ_AND_WRITE;
+                            last_instruction <= LOAD;
+                        end
+                    end
+                    STORE: begin
+                        addr_to_memory_control <= addr_base;
+                        addr_control_enable <= 1'b1;
+
+                        if(addr_control_done) begin
+                            uc_state <= IDLE;
+                            FLAG_DONE <= 1'b1;
+                            addr_control_enable <= 1'b0;
+                        end else begin
+                            uc_state <= READ_AND_WRITE;
+                            last_instruction <= STORE;
+                        end
+                    end
+                    default: begin
+                        uc_state <= IDLE;
+                        FLAG_DONE <= 1'b1;
+                    end
+                endcase
+            end
+            ALGORITHM: begin
+                FLAG_DONE <= 1'b0;
+                case(last_instruction)
+                    ZOOM_IN_VP: begin //TODO: Rever essa logica de leitura e escrita
+                        
+                        case(counter_op)
+
+                            3'b000: begin
+                                data_read_from_memory[7:0] <= data_out_mem;
+                            end
+                            3'b001: begin
+                                data_in_mem <= data_read_from_memory[7:0];
+                            end
+                            3'b010: begin
+                                DATA_OUT <= data_read_from_memory[7:0];
+                            end
+                        endcase
+
+                        if (addr_control_done && !ENABLE) begin
+                            uc_state <= IDLE;
+                            FLAG_DONE <= 1'b1;
+                            addr_control_enable <= 1'b0;
+                        end else begin
+                            uc_state <= ALGORITHM;
+                            last_instruction <= ZOOM_IN_VP;
+                        end
+                    end
+                    ZOOM_IN_RP: begin
+                        case(counter_op)
+                            3'b000: begin
+                                data_read_from_memory[7:0] <= data_out_mem;
+                            end
+                            3'b001: begin
+                                data_in_mem <= data_read_from_memory[7:0];
+                            end
+                            3'b010: begin
+                                data_in_mem <= data_read_from_memory[7:0];
+                            end
+                            3'b011: begin
+                                data_in_mem <= data_read_from_memory[7:0];
+                            end
+                            3'b100: begin
+                                data_in_mem <= data_read_from_memory[7:0];
+                            end
+                            3'b101: begin
+                                DATA_OUT <= data_read_from_memory[7:0];
+                            end
+                        endcase
+                    end
+                    ZOOM_OUT_MP: begin
+                        case(counter_op)
+                            3'b000: begin
+                endcase
+            end
             default: begin
 				
 				end
@@ -173,7 +314,7 @@ module main(
         .addr_out(addr_from_memory_control),
         .done(addr_control_done),
         .wr_enable(mem_wr),
-        .counter_op(counter_op)
+        .counter_op(op_count)
     );
 
     //vga

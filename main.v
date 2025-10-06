@@ -283,6 +283,29 @@ module main(
                     ZOOM_OUT_MP: begin
                         case(counter_op)
                             3'b000: begin
+                                data_read_from_memory[7:0] <= data_out_mem;
+                            end
+                            3'b001: begin
+                                data_read_from_memory[15:8] <= data_out_mem;
+                            end
+                            3'b010: begin
+                                data_read_from_memory[23:16] <= data_out_mem;
+                            end
+                            3'b011: begin
+                                data_read_from_memory[31:24] <= data_out_mem;
+                            end
+                            3'b100: begin
+                                enable_mp <= 1'b1;
+                            end
+                            3'b101: begin
+                                enable_mp <= 1'b0;
+                                data_in_mem <= data_from_block_avg; 
+                            end
+                            3'b110: begin
+                                DATA_OUT <= data_from_block_avg;
+                            end
+                        endcase
+                    end
                 endcase
             end
             default: begin

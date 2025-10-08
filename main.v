@@ -54,10 +54,11 @@ module main(
     localparam STEP_READ_SRC3   = 3'd2;
     localparam STEP_READ_SRC4   = 3'd3;
     localparam STEP_WRITE_DEST  = 3'd4;
-    localparam STEP_WRITE_DEST1 = 3'd4;
-    localparam STEP_WRITE_DEST2 = 3'd5;
-    localparam STEP_WRITE_DEST3 = 3'd6;
-    localparam STEP_WRITE_DEST4 = 3'd7;
+    localparam STEP_SAVE_DATA   = 3'd1;
+    localparam STEP_WRITE_DEST1 = 3'd2;
+    localparam STEP_WRITE_DEST2 = 3'd3;
+    localparam STEP_WRITE_DEST3 = 3'd4;
+    localparam STEP_WRITE_DEST4 = 3'd5;
 
     // --- Sinais de Controle ---
     reg [1:0] uc_state;
@@ -73,9 +74,9 @@ module main(
     reg  enable_ff;
     wire enable_pulse;
     always @(posedge clk_100) begin
-        enable_ff <= ENABLE;
+        enable_ff <= !ENABLE;
     end
-    assign enable_pulse = ENABLE && !enable_ff;
+    assign enable_pulse = !ENABLE && !enable_ff;
 
     // --- Sinais do Pipeline e Algoritmos ---
     reg       enable_mp, enable_rp;
@@ -139,10 +140,10 @@ module main(
                         data_read_from_memory[7:0] <= data_out_mem;
                         enable_rp <= 1'b1;
                     end
-                    if (counter_op == STEP_WRITE_DEST1) data_in_mem <= data_from_pixel_rep[7:0];
-                    if (counter_op == STEP_WRITE_DEST2) data_in_mem <= data_from_pixel_rep[15:8];
-                    if (counter_op == STEP_WRITE_DEST3) data_in_mem <= data_from_pixel_rep[23:16];
-                    if (counter_op == STEP_WRITE_DEST4) data_in_mem <= data_from_pixel_rep[31:24];
+                    if (counter_op == STEP_SAVE_DATA) data_in_mem <= data_from_pixel_rep[7:0];
+                    if (counter_op == STEP_WRITE_DEST1) data_in_mem <= data_from_pixel_rep[15:8];
+                    if (counter_op == STEP_WRITE_DEST2) data_in_mem <= data_from_pixel_rep[23:16];
+                    if (counter_op == STEP_WRITE_DEST3) data_in_mem <= data_from_pixel_rep[31:24];
                 end
                 
                 ZOOM_OUT_MP: begin
@@ -190,7 +191,7 @@ module main(
                         uc_state            <= READ_AND_WRITE;
                         last_instruction    <= INSTRUCTION;
                         addr_to_memory_control <= MEM_ADDR;
-                        has_alg_on_exec     <= 1'b1;
+                        //has_alg_on_exec     <= 1'b1;
                         addr_control_enable <= 1'b1;
                     end else if (INSTRUCTION >= ZOOM_IN_VP && INSTRUCTION <= ZOOM_OUT_VD) begin
                         uc_state            <= ALGORITHM;
@@ -205,6 +206,7 @@ module main(
             
             READ_AND_WRITE: begin
                 FLAG_DONE <= 1'b0;
+                addr_control_enable <= 1'b0;
                 if (addr_control_done) begin
                     if (last_instruction == LOAD) DATA_OUT <= data_out_mem;
                     uc_state <= IDLE;
@@ -213,6 +215,7 @@ module main(
 
             ALGORITHM: begin
                 FLAG_DONE <= 1'b0;
+                addr_control_enable <= 1'b0;
                 if (addr_control_done) begin
                     reg [2:0] next_zoom;
                     if (last_instruction == ZOOM_IN_RP || last_instruction == ZOOM_IN_VP) begin
@@ -226,9 +229,8 @@ module main(
 
                     case (next_zoom)
                         3'b100: addr_base_to_vga <= 18'd0;       // Imagem 1x
-                        3'b101, 3'b011: addr_base_to_vga <= 18'd76800;   // Imagem 2x
-                        3'b110, 3'b010: addr_base_to_vga <= 18'd153600;  // Imagem 4x
-                        // ... outros bancos se houver ...
+                        3'b101, 3'b011: addr_base_to_vga <= 18'd76800;   // Imagem 2x | Imagem 0.5x
+                        3'b110, 3'b010: addr_base_to_vga <= 18'd153600;  // Imagem 4x | Imagem 0.25x
                         default: addr_base_to_vga <= 18'd0;
                     endcase
                     uc_state <= IDLE;

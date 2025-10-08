@@ -70,8 +70,6 @@ module memory_control (
                     count_y_new <= 10'b0;
                     if (enable == 1'b1 && !done) begin
                         state <= operation;
-                    end else  begin
-                        state <= IDLE;
                         counter_op <= 3'b000;
                         case (operation)
                             NHI_ALG: begin  //algoritmo esta pronto
@@ -130,6 +128,9 @@ module memory_control (
                                 addr_out <=addr_base;
                             end
                         endcase
+
+                    end else  begin
+                        state <= IDLE;
                     end
                 end
 

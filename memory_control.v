@@ -8,11 +8,18 @@ module memory_control (
     done,
     wr_enable,
     counter_op,
+    color_in,
+    color_out,
 
     current_state
+
+
 );
 
     output [2:0] current_state;
+    input [7:0] color_in;
+    output reg [7:0] color_out;
+
     assign current_state = state;
     // estado de aguardar uma nova instrução
     localparam IDLE = 3'b000;
@@ -73,6 +80,7 @@ module memory_control (
 
             WAIT_WR_RD: begin // adicionar a veri
                 if ( wr_wait_counter == 2'b11) begin
+                    color_out <= color_in;
                     if (operation == RD_DATA || operation == WR_DATA) begin
                         state <= IDLE;
                         wr_wait_counter <= 2'b00;
@@ -126,26 +134,18 @@ module memory_control (
                 end else begin
                     case (current_operation_step)
                         3'b000: begin
-                            addr_out <= (new_x >> 1 + ((new_y >> 1)*10'd320)) + 18'd19200;
-                            current_operation_step <= 3'b001;
+                            addr_out <= old_x + (old_y*10'd320);
+                            current_operation_step <= 3'b010;
                             wr_wait_counter <= 2'b00;
                             wr_enable <= 1'b0;
                             state <= WAIT_WR_RD;
                             
                             done <= 1'b0;
                         end
-                        3'b001: begin
-                            addr_out <= addr_out;
-                            wr_wait_counter <= 2'b00;
-                            wr_enable <= 1'b0;
-                            current_operation_step <= 3'b010;
-                            done <= 1'b0;
-                            state <= NHI_ALG;
-                            
-                        end
                         3'b010: begin
-                            addr_out <= new_x + (new_y*320);
-                            current_operation_step <= 3'b100;
+                            algorithm_current_step <= algorithm_current_step + 1;
+                            addr_out <= new_x + (new_y*10'd320);
+                            current_operation_step <= 3'b000;
                             state <= WAIT_WR_RD;
                             wr_enable <= 1'b1;
                             wr_wait_counter <= 2'b00;
@@ -153,12 +153,15 @@ module memory_control (
                             if (new_x == 10'd319) begin
                                 new_x <= 10'd0;
                                 new_y <= new_y + 1;
+                                old_y <= (new_y << 1'b1) + 10'd60;
+                                old_x <= 10'd80;
                             end else begin
                                 new_x <= new_x + 1;
+                                old_x <= (new_x << 1'b1) + 10'd80;
                             end
                         end
                         3'b100: begin
-                            algorithm_current_step <= algorithm_current_step + 1;
+                            
                             state <= NHI_ALG;
                             current_operation_step <= 3'b000;
                         end
@@ -209,6 +212,7 @@ module memory_control (
                             done <= 1'b0;
                             current_operation_step <= 3'b010;
                             state <= NH_ALG;
+                            
                         end
                         3'b010: begin
                             addr_out <= new_x + (new_y*320);
@@ -232,6 +236,11 @@ module memory_control (
                         end
                         
                     endcase
+                end
+            end
+            PR_ALG: begin
+                if (!has_alg_on_exec) begin
+                    
                 end
             end
 

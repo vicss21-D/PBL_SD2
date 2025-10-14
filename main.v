@@ -29,11 +29,13 @@ module main(
 
     localparam NOP = 3'b000, LOAD = 3'b001, STORE = 3'b010, ZOOM_IN_VP = 3'b011;
     localparam ZOOM_IN_RP = 3'b100, ZOOM_OUT_MP = 3'b101, ZOOM_OUT_VD = 3'b110, RESET_INST = 3'b111;
-    localparam IDLE = 2'b00, READ_AND_WRITE = 2'b01, ALGORITHM = 2'b10, RESET = 2'b11;
+    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101;
     localparam MEM1 = 2'b00, MEM2 = 2'b01, MEM3 = 2'b10;
 
+    reg [7:0] copy_data_buffer;
+
     // --- Sinais de Controle da FSM ---
-    reg [1:0] uc_state;
+    reg [2:0] uc_state;
     reg       addr_control_enable;
     reg [2:0] last_instruction;
     reg [2:0] current_zoom;
@@ -66,13 +68,22 @@ module main(
     reg [1:0] alg_write_mem_select;
 
     reg [16:0] addr_mem1, addr_mem2, addr_mem3;
-    reg [7:0]  data_in_mem1, data_in_mem2, data_in_mem3;
+    wire [7:0] data_in_mem3;
+    reg [7:0]  data_in_mem1, data_in_mem2;
     reg        wren_mem1, wren_mem2, wren_mem3;
     wire [7:0] data_out_mem1, data_out_mem2, data_out_mem3;
     
-    mem1 memory1(.address(addr_mem1), .clock(clk_100), .data(data_in_mem1), .wren(wren_mem1), .q(data_out_mem1));
-    mem1 memory2(.address(addr_mem2), .clock(clk_100), .data(data_in_mem2), .wren(wren_mem2), .q(data_out_mem2));
-    mem1 memory3(.address(addr_mem3), .clock(clk_100), .data(data_in_mem3), .wren(wren_mem3), .q(data_out_mem3));
+    mem1 memory1(.rdaddress(addr_from_memory_control_rd), .wraddress(), .clock(clk_100), .data(data_in_mem1), .wren(wren_mem1), .q(data_out_mem1));
+    mem1 memory2(.rdaddress(addr_mem2), .wraddress(addr_wr_mem2), .clock(clk_100), .data(data_in_mem2), .wren(wren_mem2), .q(data_out_mem2));
+    // Correção na instanciação da memory3
+    mem1 memory3(
+        .rdaddress(addr_mem3), // <-- Mudança aqui para permitir controle
+        .wraddress(addr_from_memory_control_wr), 
+        .clock(clk_100), 
+        .data(data_in_mem3), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
+        .wren(wr_enable_from_alg), 
+        .q(data_out_mem3)
+    );
 
     wire [7:0] data_out_from_alg;
     wire       wr_enable_from_alg;
@@ -107,12 +118,22 @@ module main(
         endcase
     end 
     
+
+    reg [1:0] counter_rd_wr;
+
+    reg [16:0] counter_address;
     //================================================================
     // 4. Pipeline de Dados do Algoritmo
     //================================================================
 reg [2:0] next_zoom;
 reg has_alg_on_exec;
 reg [16:0] addr_from_vga_sync;
+
+    reg [1:0] counter;
+    reg has_done;
+
+reg [16:0] addr_wr_mem2;
+wire clk_vga;
     //================================================================
     // 5. Máquina de Estados Finitos (FSM) Principal
     //================================================================
@@ -127,8 +148,10 @@ reg [16:0] addr_from_vga_sync;
                 FLAG_ERROR          <= 1'b0;
                 FLAG_ZOOM_MAX       <= 1'b0;
                 FLAG_ZOOM_MIN       <= 1'b0;
+                has_done <= 1'b0;
+                vga_mem_select <= MEM2;
 
-                 if (enable_pulse) begin
+                if (enable_pulse) begin
                     if (INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
                         uc_state         <= READ_AND_WRITE;
                         last_instruction <= INSTRUCTION;
@@ -136,10 +159,12 @@ reg [16:0] addr_from_vga_sync;
                     end else if (INSTRUCTION >= ZOOM_IN_VP && INSTRUCTION <= ZOOM_OUT_VD) begin
                         uc_state         <= ALGORITHM;
                         last_instruction <= INSTRUCTION;
+                        counter_address <= 17'd0;
+                        counter_rd_wr <= 2'b0;
                         
                         // LÓGICA DE PING-PONG
-                        alg_read_mem_select <= (alg_read_mem_select == MEM2) ? MEM3 : MEM2;
-                        alg_write_mem_select <= (vga_mem_select == MEM2) ? MEM3 : MEM2;
+                        alg_read_mem_select <= MEM1;
+                        alg_write_mem_select <= MEM3;
                     end else if (INSTRUCTION == RESET_INST) begin
                         uc_state <= RESET;
                     end
@@ -160,27 +185,49 @@ reg [16:0] addr_from_vga_sync;
             ALGORITHM: begin
                 FLAG_DONE <= 1'b0;
                 has_alg_on_exec <= 1'b1;
-                addr_control_enable <= 1'b1; // <-- CORREÇÃO: Mantém o módulo de controle LIGADO
+                
+
+                    addr_control_enable <= 1'b1; // <-- CORREÇÃO: Mantém o módulo de controle LIGADO
 
                 if (addr_control_done) begin
-                    // Aponta o VGA para a memória que acabou de ser escrita
-                    vga_mem_select <= alg_write_mem_select;
-                    
-                    // Lógica para atualizar o nível de zoom
-                    
-                    // ... (código para calcular next_zoom) ...
-                    current_zoom <= next_zoom;
-                    
-                    uc_state <= IDLE;
+                    addr_control_enable <= 1'b0;
+                
+                // Algoritmo terminou de escrever na MEM3. Agora iniciamos a cópia para MEM2.
+                counter_address <= 17'd0; // Zera o contador para a cópia
+                uc_state <= COPY_READ;
                 end
             end
 
             RESET: begin
                 current_zoom   <= 3'b100;
-                vga_mem_select <= MEM1; // VGA sempre reseta para a memória original
-                alg_read_mem_select <= MEM3;
-                alg_write_mem_select <= MEM2;
+                vga_mem_select <= MEM3; // VGA sempre reseta para a memória original
+                alg_read_mem_select <= MEM1;
+                alg_write_mem_select <= MEM3;
                 uc_state       <= IDLE;
+            end
+
+            COPY_READ: begin
+            // Neste ciclo, o endereço de leitura da MEM3 (addr_mem3) é setado
+            // para 'counter_address' pelo bloco always@(*).
+            // A saída 'data_out_mem3' estará disponível no próximo ciclo de clock.
+                wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
+                uc_state <= COPY_WRITE;
+            end
+
+            COPY_WRITE: begin
+            // O dado lido da MEM3 no ciclo anterior já está disponível em 'data_out_mem3'.
+                data_in_mem2 <= data_out_mem3; // Prepara o dado para ser escrito
+                addr_wr_mem2 <= counter_address; // Define o endereço de escrita na MEM2
+                wren_mem2    <= 1'b1;             // Habilita a escrita na MEM2
+
+                if (counter_address == 17'd76799) begin // 320*240 - 1
+                    uc_state <= IDLE; // Cópia concluída
+                    vga_mem_select <= MEM2; // Aponta o VGA para a nova imagem
+                    FLAG_DONE <= 1'b1;
+                end else begin
+                    counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
+                    uc_state <= COPY_READ; // Volta para o estado de leitura
+                end
             end
             
             default: uc_state <= IDLE;
@@ -200,27 +247,46 @@ reg [16:0] addr_from_vga_sync;
 
     always @(*) begin
           // Endereçamento
-        addr_mem1 = (vga_mem_select == MEM1) ? addr_from_vga_sync : (alg_read_mem_select == MEM1) ? addr_from_memory_control : 17'd0;
+
+        if (uc_state == COPY_READ || uc_state == COPY_WRITE) begin
+            addr_mem3 = counter_address;
+        end else begin
+            addr_mem3 = addr_from_vga_sync;
+        end
+
+        // Endereçamento das outras memórias (simplificado)
+        addr_mem1 = addr_from_memory_control_rd; // MEM1 sempre lê do controle de algoritmo
+        addr_mem2 = addr_from_vga_sync; 
+
+    
+        // addr_mem1 = (vga_mem_select == MEM1) ? addr_from_vga_sync : (alg_read_mem_select == MEM1) ? addr_from_memory_control_rd : 17'd0;
 
 
-        addr_mem2 = (vga_mem_select == MEM2) ? addr_from_vga_sync : (alg_read_mem_select == MEM2 || alg_write_mem_select == MEM2) ? addr_from_memory_control : 17'd0;
-        addr_mem3 = (vga_mem_select == MEM3) ? addr_from_vga_sync : (alg_read_mem_select == MEM3 || alg_write_mem_select == MEM3) ? addr_from_memory_control : 17'd0;
-
-        // Escrita
-        wren_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? wr_enable_from_alg : 1'b0;
-        data_in_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? DATA_IN : 8'd0;
+        // //addr_mem2 =  (!FLAG_DONE && alg_read_mem_select == MEM3) ? addr_from_memory_control_rd : (vga_mem_select == MEM3) ? addr_from_vga_sync : 17'd0;
         
-        wren_mem2 = (alg_write_mem_select == MEM2) ? wr_enable_from_alg : 1'b0;
-        data_in_mem2 = (alg_write_mem_select == MEM2) ? data_read_from_memory[7:0] : 8'd0;
+        // addr_mem2 = (vga_mem_select == MEM2) ? addr_from_vga_sync : (alg_read_mem_select == MEM2 || alg_write_mem_select == MEM2) ? addr_from_memory_control_rd : 17'd0;
         
-        wren_mem3 = (alg_write_mem_select == MEM3) ? wr_enable_from_alg : 1'b0;
-        data_in_mem3 = (alg_write_mem_select == MEM3) ? data_read_from_memory[7:0] : 8'd0;
+        // //addr_mem3 = (!FLAG_DONE && alg_read_mem_select == MEM3) ? addr_from_memory_control_rd : (vga_mem_select == MEM3) ? addr_from_vga_sync : 17'd0;
+        // addr_mem3 = (vga_mem_select == MEM3) ? addr_from_vga_sync : (alg_read_mem_select == MEM3 || alg_write_mem_select == MEM3) ? addr_from_memory_control_rd : 17'd0;
+
+        // // Escrita
+        // wren_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? wr_enable_from_alg : 1'b0;
+        // data_in_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? DATA_IN : 8'd0;
+        
+        // wren_mem2 = (alg_write_mem_select == MEM2) ? wr_enable_from_alg : 1'b0;
+        // data_in_mem2 = (alg_write_mem_select == MEM2) ? data_read_from_memory[7:0] : 8'd0;
+        
+        // wren_mem3 = (alg_write_mem_select == MEM3) ? wr_enable_from_alg : 1'b0;
+        // data_in_mem3 = (alg_write_mem_select == MEM3) ? data_read_from_memory[7:0] : 8'd0;
     end
+
+    wire [16:0] addr_from_memory_control_wr;
+    wire [16:0] addr_from_memory_control_rd;
 
     //================================================================
     // 6. Instâncias de Módulos
     //================================================================
-    memory_control addr_control(.addr_base(MEM_ADDR), .clock(clk_100), .operation(last_instruction), .current_zoom(current_zoom), .enable(addr_control_enable), .addr_out(addr_from_memory_control), .done(addr_control_done), .wr_enable(wr_enable_from_alg), .counter_op(counter_op), .color_in(data_out_from_alg), .color_out(data_read_from_memory[7:0]));
+    memory_control addr_control(.addr_base(MEM_ADDR), .clock(clk_100), .operation(last_instruction), .current_zoom(current_zoom), .enable(addr_control_enable), .addr_out_wr(addr_from_memory_control_wr), .done(addr_control_done), .wr_enable(wr_enable_from_alg), .counter_op(counter_op), .color_in(data_out_mem_1), .color_out(data_in_mem3), .addr_out_rd(addr_from_memory_control_rd));
     zoom_in_two zoom_in_pr(.enable(enable_rp), .data_in(data_read_from_memory[7:0]), .data_out(data_from_pixel_rep));
     zoom_out_one zoom_out_mp(.enable(enable_mp), .data_in(data_read_from_memory), .data_out(data_from_block_avg));
     vga_module vga_out(.clock(clk_25_vga), .reset(1'b0), .color_in(data_to_vga_pipe), .next_x(next_x), .next_y(next_y), .hsync(VGA_H_SYNC_N), .vsync(VGA_V_SYNC_N), .red(VGA_R), .green(VGA_G), .blue(VGA_B), .sync(VGA_SYNC), .clk(VGA_CLK), .blank(VGA_BLANK_N));

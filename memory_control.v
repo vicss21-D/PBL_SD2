@@ -4,17 +4,20 @@ module memory_control (
     operation,
     current_zoom,
     enable,
-    addr_out,
+    addr_out_rd,
+    addr_out_wr,
     done,
     wr_enable,
     counter_op,
     color_in,
     color_out,
+    finish_state,
 
     current_state
 
 
 );
+output reg finish_state;
 
     output [2:0] current_state;
     input [7:0] color_in;
@@ -41,7 +44,8 @@ module memory_control (
     input [2:0] operation;
     input [2:0] current_zoom;
     input enable, clock;
-    output reg [16:0] addr_out;
+    output reg [16:0] addr_out_rd;
+    output reg [16:0] addr_out_wr;
     output reg done;
     output reg wr_enable;
     output [2:0] counter_op;
@@ -62,6 +66,9 @@ module memory_control (
     reg [2:0] offset;
     
     assign counter_op = current_operation_step;
+
+    reg [16:0] addr_base_wr;
+    reg [16:0] addr_base_rd;
     
     always @(posedge clock) begin
         case (state)
@@ -69,7 +76,8 @@ module memory_control (
                 done <= 1'b1;
                 has_alg_on_exec <= 1'b0;
                 wr_enable <= 1'b0;
-                addr_out <= 17'b0;
+                addr_out_rd <= 17'b0;
+                addr_out_wr <= 17'b0;
                 if (enable) begin
                     state <= operation;
                     done <= 1'b0;
@@ -79,7 +87,7 @@ module memory_control (
             end
 
             WAIT_WR_RD: begin // adicionar a veri
-                if ( wr_wait_counter == 2'b11) begin
+                if ( wr_wait_counter == 2'b01) begin
                     color_out <= color_in;
                     if (operation == RD_DATA || operation == WR_DATA) begin
                         state <= IDLE;
@@ -105,7 +113,7 @@ module memory_control (
             end
 
             RD_DATA: begin
-                addr_out <= addr_base;
+                addr_out_rd <= addr_base;
                 state <= WAIT_WR_RD;
                 wr_wait_counter <= 2'b00;
                 wr_enable <= 1'b0;
@@ -113,7 +121,7 @@ module memory_control (
             end
 
             WR_DATA: begin
-                addr_out <= addr_base;
+                addr_out_wr <= addr_base;
                 state <= WAIT_WR_RD;
                 wr_wait_counter <= 2'b00;
                 wr_enable <= 1'b1;
@@ -126,6 +134,8 @@ module memory_control (
                     algorithm_needed_steps <= 17'd76800;
                     algorithm_current_step <= 17'd0;
                     current_operation_step <= 3'b0;
+                    addr_base_rd <= 17'd19200;
+                    addr_base_wr <= 17'd0;
                     state <= NHI_ALG;
                     old_x <= 10'd80;
                     old_y <= 10'd60;
@@ -134,115 +144,170 @@ module memory_control (
                 end else begin
                     case (current_operation_step)
                         3'b000: begin
-                            addr_out <= old_x + (old_y*10'd320);
-                            current_operation_step <= 3'b010;
+                            addr_out_rd <= ( old_x<<1) + ((old_y<<1)*10'd320);
                             wr_wait_counter <= 2'b00;
                             wr_enable <= 1'b0;
                             state <= WAIT_WR_RD;
-                            
-                            done <= 1'b0;
+                            current_operation_step <= 3'b010;
+                            // addr_base_rd <= addr_base_rd + 2'd2;
+                            // current_operation_step <= 3'b001;
+                            // wr_enable <= 1'b0;
+                            // state <= NHI_ALG;
+                            // done <= 1'b0;
+                        end
+                        3'b001: begin
+                            //addr_out_rd <= addr_out;
+                            wr_wait_counter <= 2'b00;
+                            wr_enable <= 1'b0;
+                            state <= WAIT_WR_RD;
+                            current_operation_step <= 3'b010;
                         end
                         3'b010: begin
+                            finish_state <= 1'b0;
+                            
+                            addr_out_wr <= addr_base_wr;
+
                             algorithm_current_step <= algorithm_current_step + 1;
-                            addr_out <= new_x + (new_y*10'd320);
-                            current_operation_step <= 3'b000;
-                            state <= WAIT_WR_RD;
+                            //addr_out_wr <= addr_out;
                             wr_enable <= 1'b1;
                             wr_wait_counter <= 2'b00;
-                            done <= 1'b0;
                             if (new_x == 10'd319) begin
                                 new_x <= 10'd0;
                                 new_y <= new_y + 1;
-                                old_y <= (new_y << 1'b1) + 10'd60;
+                                old_y <= (new_y >> 1'b1) + 10'd60;
                                 old_x <= 10'd80;
                             end else begin
                                 new_x <= new_x + 1;
-                                old_x <= (new_x << 1'b1) + 10'd80;
+                                old_x <= (new_x >> 1'b1) + 10'd80;
                             end
-                        end
-                        3'b100: begin
+                            state <= WAIT_WR_RD;
+                            //state <= NHI_ALG;
+                            current_operation_step <= 3'b000;
+                            addr_base_wr <= addr_base_wr+1'b1;
+                            // current_operation_step <= 3'b011;
+                            // state <= NHI_ALG;
+                            // done <= 1'b0;
                             
-                            state <= NHI_ALG;
+                        end
+
+                        3'b011: begin
+                            algorithm_current_step <= algorithm_current_step + 1;
+                            //addr_out_wr <= addr_out;
+                            wr_enable <= 1'b1;
+                            wr_wait_counter <= 2'b00;
+                            if (new_x == 10'd319) begin
+                                new_x <= 10'd0;
+                                new_y <= new_y + 1;
+                                old_y <= (new_y >> 1'b1) + 10'd60;
+                                old_x <= 10'd80;
+                            end else begin
+                                new_x <= new_x + 1;
+                                old_x <= (new_x >> 1'b1) + 10'd80;
+                            end
+                            state <= WAIT_WR_RD;
+                            //state <= NHI_ALG;
                             current_operation_step <= 3'b000;
                         end
                         default: begin
+                            finish_state <= 1'b0;
                             current_operation_step <= 3'b0;
                             state <= NHI_ALG;
                         end
                     endcase
                 end
             end
-            NH_ALG: begin
-                if (!has_alg_on_exec) begin
-                    algorithm_needed_steps <= (current_zoom == 3'b100) ? 19'd19200:19'd4800;
-                    algorithm_current_step <= 17'd0;
+            // NH_ALG: begin
+            //     if (!has_alg_on_exec) begin
+            //         algorithm_needed_steps <= (current_zoom == 3'b100) ? 19'd19200:19'd4800;
+            //         algorithm_current_step <= 17'd0;
                     
-                    old_x <= 10'd0;
-                    old_y <= 10'd0;
-                    new_x <= (current_zoom == 3'b100) ? 10'd80:10'd120;
-                    new_y <= (current_zoom == 3'b100) ? 10'd60:10'd90;
-                    has_alg_on_exec <= 1'b1;
-                    offset <= (current_zoom == 3'b100) ? 3'd2:3'd4;
-                    current_operation_step <= 3'b0;
-                    state <= NH_ALG;
-                end else begin
+            //         old_x <= 10'd0;
+            //         old_y <= 10'd0;
+            //         new_x <= (current_zoom == 3'b100) ? 10'd80:10'd120;
+            //         new_y <= (current_zoom == 3'b100) ? 10'd60:10'd90;
+            //         has_alg_on_exec <= 1'b1;
+            //         offset <= (current_zoom == 3'b100) ? 3'd2:3'd4;
+            //         current_operation_step <= 3'b0;
+            //         state <= NH_ALG;
+            //     end else begin
 
-                    case (current_operation_step)
-                        3'b000: begin
-                            addr_out <= ((old_x) + ((old_y)*10'd320));
+            //         case (current_operation_step)
+            //             3'b000: begin
+            //                 addr_out <= ((old_x) + ((old_y)*10'd320));
                             
                             
-                            wr_enable <= 1'b0;
+            //                 wr_enable <= 1'b0;
                             
-                            done <= 1'b0;
-                            if (old_x >= 10'd316) begin
-                                old_x <= 10'd0;
-                                old_y <= old_y + offset;
-                            end else begin
-                                old_x <= old_x + offset;
-                            end
-                            wr_wait_counter <= 2'b00;
-                            current_operation_step <= 3'b001;
-                            state <= WAIT_WR_RD;
-                        end
-                        3'b001: begin
-                            addr_out <= addr_out;
-                            wr_wait_counter <= 2'b00;
-                            wr_enable <= 1'b0;
-                            done <= 1'b0;
-                            current_operation_step <= 3'b010;
-                            state <= NH_ALG;
+            //                 done <= 1'b0;
+            //                 if (old_x >= 10'd316) begin
+            //                     old_x <= 10'd0;
+            //                     old_y <= old_y + offset;
+            //                 end else begin
+            //                     old_x <= old_x + offset;
+            //                 end
+            //                 wr_wait_counter <= 2'b00;
+            //                 current_operation_step <= 3'b001;
+            //                 state <= WAIT_WR_RD;
+            //             end
+            //             3'b001: begin
+            //                 addr_out <= addr_out;
+            //                 wr_wait_counter <= 2'b00;
+            //                 wr_enable <= 1'b0;
+            //                 done <= 1'b0;
+            //                 current_operation_step <= 3'b010;
+            //                 state <= NH_ALG;
                             
-                        end
-                        3'b010: begin
-                            addr_out <= new_x + (new_y*320);
-                            current_operation_step <= 3'b100;
+            //             end
+            //             3'b010: begin
+            //                 addr_out <= new_x + (new_y*320);
+            //                 current_operation_step <= 3'b100;
                             
-                            wr_enable <= 1'b1;
-                            wr_wait_counter <= 2'b00;
-                            done <= 1'b0;
-                            algorithm_current_step <= algorithm_current_step + 1;
-                            if ((new_x == 10'd200 && offset == 3'd4) || (new_x == 10'd240 && offset == 3'd2)) begin
-                                new_x <= 10'd0;
-                                new_y <= new_y + 1;
-                            end else begin
-                                new_x <= new_x + 1;
-                            end
-                            state <= WAIT_WR_RD;
-                        end
-                        3'b100: begin
-                            state <= NH_ALG;
-                            current_operation_step <= 3'b0;
-                        end
+            //                 wr_enable <= 1'b1;
+            //                 wr_wait_counter <= 2'b00;
+            //                 done <= 1'b0;
+            //                 algorithm_current_step <= algorithm_current_step + 1;
+            //                 if ((new_x == 10'd200 && offset == 3'd4) || (new_x == 10'd240 && offset == 3'd2)) begin
+            //                     new_x <= 10'd0;
+            //                     new_y <= new_y + 1;
+            //                 end else begin
+            //                     new_x <= new_x + 1;
+            //                 end
+            //                 state <= WAIT_WR_RD;
+            //             end
+            //             3'b100: begin
+            //                 state <= NH_ALG;
+            //                 current_operation_step <= 3'b0;
+            //             end
                         
-                    endcase
-                end
-            end
-            PR_ALG: begin
-                if (!has_alg_on_exec) begin
-                    
-                end
-            end
+            //         endcase
+            //     end
+            // end
+            // PR_ALG: begin
+            //     if (!has_alg_on_exec) begin
+            //         has_alg_on_exec <= 1'b1;
+            //         algorithm_needed_steps <= 19'd19200;
+            //         algorithm_current_step <= 17'd0;
+            //         current_operation_step <= 3'b0;
+            //         old_x <= 10'd80;
+            //         old_y <= 10'd60;
+            //         new_x <= 10'd0;
+            //         new_y <= 10'd0;
+            //         state <= PR_ALG;
+            //     end else begin
+            //         case (current_operation_step)
+            //             3'b000: begin
+            //                 addr_out <= old_x + (old_y*10'd320);
+            //                 current_operation_step <= 3'b001;
+            //                 wr_wait_counter <= 2'b00;
+            //                 wr_enable <= 1'b0;
+            //                 state <= WAIT_WR_RD;
+                            
+            //                 done <= 1'b0;
+            //             end
+            //         endcase
+
+            //     end
+            // end
 
         endcase
     end

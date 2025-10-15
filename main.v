@@ -76,7 +76,7 @@ module main(
     
     //memoria que guarda a imagem original
     mem1 memory1(
-    .rdaddress(addr_from_memory_control_rd), 
+    .rdaddress(a1), 
     .wraddress(), 
     .clock(clk_100), 
     .data(data_in_mem1), 
@@ -96,12 +96,72 @@ module main(
     //memoria de trabalho
     mem1 memory3(
         .rdaddress(addr_mem3), // <-- Mudança aqui para permitir controle
-        .wraddress(addr_from_memory_control_wr), 
+        .wraddress(a3), 
         .clock(clk_100), 
         .data(8'b11100000), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
         .wren(wren_mem3), 
         .q(data_out_mem3)
     );
+
+    reg [16:0] a3, a1;
+    reg [9:0] ox,oy, nx,ny;
+
+    reg wr3;
+    reg [1:0] cr;
+
+    reg [2:0] step;
+    reg [2:0] op;
+
+    always @(posedge clk_100) begin
+        if (uc_state == ALGORITHM) begin
+            case(op) 
+                3'b000: begin
+                    case (step)
+                        3'b000: begin
+                            a1 <= ox + oy+10'd320;
+                            cr <= 2'b00;
+                            step <= 3'b001;
+                            op <= 3'b111;
+                        end
+                        3'b001: begin
+                            a3 <= nx + ny*10'd320;
+                            cr <= 2'b00;
+                            step <= 3'b000;
+                            op <= 3'b111;
+                        
+                        if (nx == 10'd319 && ny == 10'd239) begin
+                            addr_control_done <= 1'b1;
+                        end else begin
+                                if (nx == 10'd319) begin
+                                    nx <= 10'd0;
+                                    ny <= ny + 1;
+                                    ox <= 10'd0;
+                                    oy <= ny >> 1;
+                                end else begin
+                                    nx <= nx + 1'b1;
+                                    ox <= (nx >> 1);
+                                end
+                            end
+                        end 
+                    endcase
+                end
+                3'b111: begin
+                    if (cr == 2'b10) begin
+                        wr3 <= 1'b0;
+                        cr <= 2'b00;
+                        op <= 3'b000;
+                    end else begin
+                        cr <= cr + 1'b1;
+                    end
+                end
+
+            endcase
+        end else begin
+            op <= 3'b000;
+            step <= 3'b000;
+            cr <= 2'b00;
+        end
+    end
 
     wire [7:0] data_out_from_alg;
     wire       wr_enable_from_alg;
@@ -284,7 +344,7 @@ wire clk_vga;
     .current_zoom(current_zoom), 
     .enable(addr_control_enable), 
     .addr_out_wr(addr_from_memory_control_wr), 
-    .done(addr_control_done), 
+    .done(), 
     .wr_enable(wr_enable_from_alg), 
     .counter_op(counter_op), 
     .color_in(8'b11100000), 

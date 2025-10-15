@@ -260,7 +260,7 @@ wire clk_vga;
     
     end
     
-    assign wren_mem3 = (current_operation_step == 3'b011) ? 1'b1:1'b0;
+    assign wren_mem3 = (counter_op == 3'b011) ? 1'b1:1'b0;
 
 
     always @(*) begin

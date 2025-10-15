@@ -288,7 +288,7 @@ wire clk_vga;
     .done(addr_control_done), 
     .wr_enable(wr_enable_from_alg), 
     .counter_op(counter_op), 
-    .color_in(data_out_mem_1), 
+    .color_in(8'b11100000), 
     .color_out(data_in_mem3), 
     .addr_out_rd(addr_from_memory_control_rd));
 

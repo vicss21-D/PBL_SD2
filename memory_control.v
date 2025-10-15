@@ -208,7 +208,7 @@ output reg finish_state;
             NHI_ALG: begin
                 if (!has_alg_on_exec) begin
                     has_alg_on_exec <= 1'b1;
-                    algorithm_needed_steps <= 17'd76799;
+                    algorithm_needed_steps <= 17'd7679;
                     algorithm_current_step <= 17'd0;
                     current_operation_step <= 3'b0;
                     addr_base_rd <= 17'd19200;

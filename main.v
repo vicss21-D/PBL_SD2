@@ -97,7 +97,7 @@ module main(
         .rdaddress(addr_mem3), // <-- Mudança aqui para permitir controle
         .wraddress(addr_from_memory_control_wr), 
         .clock(clk_100), 
-        .data(data_in_mem3), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
+        .data(3'b11100000), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
         .wren(wr_enable_from_alg), 
         .q(data_out_mem3)
     );

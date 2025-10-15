@@ -94,6 +94,8 @@ output reg finish_state;
                         end else begin
                             color_out <= color_out; //mantem salva a cor a ser escrita nas proximas operações
                         end
+                    end else begin
+                        color_out <= color_in;
                     end
                     if (operation == RD_DATA || operation == WR_DATA) begin
                         state <= IDLE;

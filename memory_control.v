@@ -88,7 +88,13 @@ output reg finish_state;
 
             WAIT_WR_RD: begin // adicionar a veri
                 if ( wr_wait_counter == 2'b01) begin
-                    color_out <= color_in;
+                    if(operation == PR_ALG) begin
+                        if (current_operation_step == 3'b000) begin //guarda a cor a ser escrita
+                            color_out <= color_in;
+                        end else begin
+                            color_out <= color_out; //mantem salva a cor a ser escrita nas proximas operações
+                        end
+                    end
                     if (operation == RD_DATA || operation == WR_DATA) begin
                         state <= IDLE;
                         wr_wait_counter <= 2'b00;
@@ -128,10 +134,81 @@ output reg finish_state;
                 done <= 1'b0;
             end
 
+            PR_ALG: begin
+                if (!has_alg_on_exec) begin
+                    has_alg_on_exec <= 1'b1;
+                    algorithm_needed_steps <= 19'd19200;
+                    algorithm_current_step <= 17'd0;
+                    current_operation_step <= 3'b0;
+                    old_x <= 10'd80;
+                    old_y <= 10'd60;
+                    new_x <= 10'd0;
+                    new_y <= 10'd0;
+                    state <= PR_ALG;
+                end else begin
+                    case (current_operation_step)
+
+                        3'b000: begin //leitura
+                            addr_out_rd <= old_x + (old_y*10'd320);
+                            wr_wait_counter <= 2'b00;
+                            wr_enable <= 1'b0;
+                            state <= WAIT_WR_RD;
+                            current_operation_step <= 3'b001;
+                            done <= 1'b0;
+                        end
+                        3'b001: begin //escrita 00
+                            addr_out_wr <= new_x + (new_y*320);
+                            current_operation_step <= 3'b010;
+                            wr_enable <= 1'b1;
+                            wr_wait_counter <= 2'b00;
+                            done <= 1'b0;
+                            new_x <= new_x + 1'b1;
+                            state <= WAIT_WR_RD;
+                        end
+                        3'b010: begin //escrita 01
+                            addr_out_wr <= new_x + (new_y*320);
+                            current_operation_step <= 3'b011;
+                            wr_enable <= 1'b1;
+                            wr_wait_counter <= 2'b00;
+                            done <= 1'b0;
+                            new_x <= new_x - 1'b1;
+                            new_y <= new_y + 1'b1;
+                            state <= WAIT_WR_RD;
+                        end
+                        3'b100: begin //escrita 10
+                            addr_out_wr <= new_x + (new_y*320);
+                            current_operation_step <= 3'b101;
+                            wr_enable <= 1'b1;
+                            wr_wait_counter <= 2'b00;
+                            done <= 1'b0;
+                            new_x <= new_x + 1'b1;
+                            state <= WAIT_WR_RD;
+                        end
+                        3'b101: begin //escrita 11
+                            addr_out_wr <= new_x + (new_y*320);
+                            current_operation_step <= 3'b000;
+                            wr_enable <= 1'b1;
+                            wr_wait_counter <= 2'b00;
+                            done <= 1'b0;
+                            if (new_x == 10'd319) begin
+                                new_x <= 10'd0;
+                                new_y <= new_y + 1'b1;
+                                old_x <= 10'd80;
+                                old_y <= old_y + 1'b1;
+                            end else begin
+                                new_x <= new_x + 1'b1;
+                                new_y <= new_y - 1'b1;
+                                old_x <= old_x + 1'b1;
+                            end
+                        end
+                    endcase
+                end
+            end
+
             NHI_ALG: begin
                 if (!has_alg_on_exec) begin
                     has_alg_on_exec <= 1'b1;
-                    algorithm_needed_steps <= 17'd76800;
+                    algorithm_needed_steps <= 17'd76799;
                     algorithm_current_step <= 17'd0;
                     current_operation_step <= 3'b0;
                     addr_base_rd <= 17'd19200;

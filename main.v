@@ -73,9 +73,26 @@ module main(
     reg        wren_mem1, wren_mem2, wren_mem3;
     wire [7:0] data_out_mem1, data_out_mem2, data_out_mem3;
     
-    mem1 memory1(.rdaddress(addr_from_memory_control_rd), .wraddress(), .clock(clk_100), .data(data_in_mem1), .wren(wren_mem1), .q(data_out_mem1));
-    mem1 memory2(.rdaddress(addr_mem2), .wraddress(addr_wr_mem2), .clock(clk_100), .data(data_in_mem2), .wren(wren_mem2), .q(data_out_mem2));
-    // Correção na instanciação da memory3
+    //memoria que guarda a imagem original
+    mem1 memory1(
+    .rdaddress(addr_from_memory_control_rd), 
+    .wraddress(), 
+    .clock(clk_100), 
+    .data(data_in_mem1), 
+    .wren(wren_mem1), 
+    .q(data_out_mem1)
+    );
+
+    //memoria de exibiçao
+    mem1 memory2(
+    .rdaddress(addr_mem2), 
+    .wraddress(addr_wr_mem2), 
+    .clock(clk_100), 
+    .data(data_in_mem2), 
+    .wren(wren_mem2), 
+    .q(data_out_mem2)
+    );
+    //memoria de trabalho
     mem1 memory3(
         .rdaddress(addr_mem3), // <-- Mudança aqui para permitir controle
         .wraddress(addr_from_memory_control_wr), 
@@ -87,10 +104,6 @@ module main(
 
     wire [7:0] data_out_from_alg;
     wire       wr_enable_from_alg;
-
-    
-    assign data_out_from_alg = (alg_read_mem_select == MEM1) ? data_out_mem1 :
-                               (alg_read_mem_select == MEM2) ? data_out_mem2 : data_out_mem3;
 
     //================================================================
     // 3. Lógica do VGA
@@ -187,14 +200,14 @@ wire clk_vga;
                 has_alg_on_exec <= 1'b1;
                 
 
-                    addr_control_enable <= 1'b1; // <-- CORREÇÃO: Mantém o módulo de controle LIGADO
+                addr_control_enable <= 1'b1; 
 
-                if (addr_control_done) begin
+                if (addr_control_done) begin //ao fim do algoritmo inicia a etapa de copia
                     addr_control_enable <= 1'b0;
-                
-                // Algoritmo terminou de escrever na MEM3. Agora iniciamos a cópia para MEM2.
-                counter_address <= 17'd0; // Zera o contador para a cópia
-                uc_state <= COPY_READ;
+                    counter_rd_wr <= 2'b00;
+                    counter_address <= 17'd0; // Zera o contador para a cópia
+                    wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
+                    uc_state <= COPY_READ;
                 end
             end
 
@@ -210,8 +223,14 @@ wire clk_vga;
             // Neste ciclo, o endereço de leitura da MEM3 (addr_mem3) é setado
             // para 'counter_address' pelo bloco always@(*).
             // A saída 'data_out_mem3' estará disponível no próximo ciclo de clock.
-                wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
-                uc_state <= COPY_WRITE;
+                if(counter_rd_wr == 2'b10) begin
+                    wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
+                    counter_rd_wr <= 2'b00;
+                    uc_state <= COPY_WRITE;
+                    
+                end else begin
+                    counter_rd_wr <= counter_rd_wr + 1;
+                end
             end
 
             COPY_WRITE: begin
@@ -219,29 +238,24 @@ wire clk_vga;
                 data_in_mem2 <= data_out_mem3; // Prepara o dado para ser escrito
                 addr_wr_mem2 <= counter_address; // Define o endereço de escrita na MEM2
                 wren_mem2    <= 1'b1;             // Habilita a escrita na MEM2
-
-                if (counter_address == 17'd76799) begin // 320*240 - 1
-                    uc_state <= IDLE; // Cópia concluída
-                    vga_mem_select <= MEM2; // Aponta o VGA para a nova imagem
-                    FLAG_DONE <= 1'b1;
+                
+                if (counter_rd_wr == 2'b10) begin
+                    counter_rd_wr <= 2'b00;
+                    if (counter_address == 17'd76799) begin // 320*240 - 1
+                        uc_state <= IDLE; // Cópia concluída
+                        vga_mem_select <= MEM2; // Aponta o VGA para a nova imagem
+                        FLAG_DONE <= 1'b1;
+                    end else begin
+                        counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
+                        uc_state <= COPY_READ; // Volta para o estado de leitura
+                    end
                 end else begin
-                    counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
-                    uc_state <= COPY_READ; // Volta para o estado de leitura
+                    counter_rd_wr <= counter_rd_wr + 1;
                 end
             end
             
             default: uc_state <= IDLE;
         endcase
-
-         if (uc_state == ALGORITHM) begin
-            if (counter_op_delayed == 3'b001) begin
-                //data_read_from_memory[7:0] <= data_out_from_alg;
-            end
-            // ... lógica para outros algoritmos ...
-        end
-
-
-        
     
     end
 
@@ -250,34 +264,13 @@ wire clk_vga;
 
         if (uc_state == COPY_READ || uc_state == COPY_WRITE) begin
             addr_mem3 = counter_address;
+
         end else begin
-            addr_mem3 = addr_from_vga_sync;
+            addr_mem2 = addr_from_vga_sync; 
         end
 
         // Endereçamento das outras memórias (simplificado)
         addr_mem1 = addr_from_memory_control_rd; // MEM1 sempre lê do controle de algoritmo
-        addr_mem2 = addr_from_vga_sync; 
-
-    
-        // addr_mem1 = (vga_mem_select == MEM1) ? addr_from_vga_sync : (alg_read_mem_select == MEM1) ? addr_from_memory_control_rd : 17'd0;
-
-
-        // //addr_mem2 =  (!FLAG_DONE && alg_read_mem_select == MEM3) ? addr_from_memory_control_rd : (vga_mem_select == MEM3) ? addr_from_vga_sync : 17'd0;
-        
-        // addr_mem2 = (vga_mem_select == MEM2) ? addr_from_vga_sync : (alg_read_mem_select == MEM2 || alg_write_mem_select == MEM2) ? addr_from_memory_control_rd : 17'd0;
-        
-        // //addr_mem3 = (!FLAG_DONE && alg_read_mem_select == MEM3) ? addr_from_memory_control_rd : (vga_mem_select == MEM3) ? addr_from_vga_sync : 17'd0;
-        // addr_mem3 = (vga_mem_select == MEM3) ? addr_from_vga_sync : (alg_read_mem_select == MEM3 || alg_write_mem_select == MEM3) ? addr_from_memory_control_rd : 17'd0;
-
-        // // Escrita
-        // wren_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? wr_enable_from_alg : 1'b0;
-        // data_in_mem1 = (uc_state == READ_AND_WRITE && last_instruction == STORE) ? DATA_IN : 8'd0;
-        
-        // wren_mem2 = (alg_write_mem_select == MEM2) ? wr_enable_from_alg : 1'b0;
-        // data_in_mem2 = (alg_write_mem_select == MEM2) ? data_read_from_memory[7:0] : 8'd0;
-        
-        // wren_mem3 = (alg_write_mem_select == MEM3) ? wr_enable_from_alg : 1'b0;
-        // data_in_mem3 = (alg_write_mem_select == MEM3) ? data_read_from_memory[7:0] : 8'd0;
     end
 
     wire [16:0] addr_from_memory_control_wr;
@@ -286,10 +279,32 @@ wire clk_vga;
     //================================================================
     // 6. Instâncias de Módulos
     //================================================================
-    memory_control addr_control(.addr_base(MEM_ADDR), .clock(clk_100), .operation(last_instruction), .current_zoom(current_zoom), .enable(addr_control_enable), .addr_out_wr(addr_from_memory_control_wr), .done(addr_control_done), .wr_enable(wr_enable_from_alg), .counter_op(counter_op), .color_in(data_out_mem_1), .color_out(data_in_mem3), .addr_out_rd(addr_from_memory_control_rd));
-    zoom_in_two zoom_in_pr(.enable(enable_rp), .data_in(data_read_from_memory[7:0]), .data_out(data_from_pixel_rep));
-    zoom_out_one zoom_out_mp(.enable(enable_mp), .data_in(data_read_from_memory), .data_out(data_from_block_avg));
-    vga_module vga_out(.clock(clk_25_vga), .reset(1'b0), .color_in(data_to_vga_pipe), .next_x(next_x), .next_y(next_y), .hsync(VGA_H_SYNC_N), .vsync(VGA_V_SYNC_N), .red(VGA_R), .green(VGA_G), .blue(VGA_B), .sync(VGA_SYNC), .clk(VGA_CLK), .blank(VGA_BLANK_N));
+    memory_control addr_control(.addr_base(MEM_ADDR), 
+    .clock(clk_100), 
+    .operation(last_instruction), 
+    .current_zoom(current_zoom), 
+    .enable(addr_control_enable), 
+    .addr_out_wr(addr_from_memory_control_wr), 
+    .done(addr_control_done), 
+    .wr_enable(wr_enable_from_alg), 
+    .counter_op(counter_op), 
+    .color_in(data_out_mem_1), 
+    .color_out(data_in_mem3), 
+    .addr_out_rd(addr_from_memory_control_rd));
+
+    vga_module vga_out(.clock(clk_25_vga), 
+    .reset(1'b0), 
+    .color_in(data_to_vga_pipe), 
+    .next_x(next_x), 
+    .next_y(next_y), 
+    .hsync(VGA_H_SYNC_N), 
+    .vsync(VGA_V_SYNC_N), 
+    .red(VGA_R), 
+    .green(VGA_G), 
+    .blue(VGA_B), 
+    .sync(VGA_SYNC), 
+    .clk(VGA_CLK), 
+    .blank(VGA_BLANK_N));
 
     // --- Conexões para portas de debug ---
     assign addr_in_memory = addr_from_memory_control;

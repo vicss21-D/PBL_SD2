@@ -89,7 +89,7 @@ module main(
     .rdaddress(addr_mem2), 
     .wraddress(addr_wr_mem2), 
     .clock(clk_100), 
-    .data(8'b00011100), 
+    .data(data_out_mem3), 
     .wren(wren_mem2), 
     .q(data_out_mem2)
     );
@@ -99,7 +99,7 @@ module main(
         .wraddress(addr_from_memory_control_wr), 
         .clock(clk_100), 
         .data(8'b11100000), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
-        .wren(wr_enable_from_alg), 
+        .wren(wren_mem3), 
         .q(data_out_mem3)
     );
 
@@ -260,7 +260,7 @@ wire clk_vga;
     
     end
     
-    assign wren_mem3 = (counter_op == 3'b011) ? 1'b1:1'b0;
+    assign wren_mem3 = (counter_op == 3'b011 && !addr_control_done) ? 1'b1:1'b0;
 
 
     always @(*) begin

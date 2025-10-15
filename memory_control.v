@@ -210,14 +210,14 @@ output reg finish_state;
             NHI_ALG: begin
                 if (!has_alg_on_exec) begin
                     has_alg_on_exec <= 1'b1;
-                    algorithm_needed_steps <= 17'd7679;
+                    algorithm_needed_steps <= 17'd19200;
                     algorithm_current_step <= 17'd0;
                     current_operation_step <= 3'b0;
                     addr_base_rd <= 17'd19200;
                     addr_base_wr <= 17'd0;
                     state <= NHI_ALG;
-                    old_x <= 10'd80;
-                    old_y <= 10'd60;
+                    old_x <= 10'd0;
+                    old_y <= 10'd0;
                     new_x <= 10'd0;
                     new_y <= 10'd0;
                 end else begin
@@ -244,33 +244,33 @@ output reg finish_state;
                         3'b010: begin
                             finish_state <= 1'b0;
                             
-                            addr_out_wr <= addr_base_wr;
+                            addr_out_wr <= new_x + (new_y*10'd320);
 
                             algorithm_current_step <= algorithm_current_step + 1;
                             //addr_out_wr <= addr_out;
                             wr_enable <= 1'b1;
                             wr_wait_counter <= 2'b00;
-                            if (new_x == 10'd319) begin
-                                new_x <= 10'd0;
-                                new_y <= new_y + 1;
-                                old_y <= (new_y >> 1'b1) + 10'd60;
-                                old_x <= 10'd80;
-                            end else begin
-                                new_x <= new_x + 1;
-                                old_x <= (new_x >> 1'b1) + 10'd80;
-                            end
-                            state <= WAIT_WR_RD;
-                            //state <= NHI_ALG;
-                            current_operation_step <= 3'b000;
-                            addr_base_wr <= addr_base_wr+1'b1;
-                            // current_operation_step <= 3'b011;
+                            // if (new_x == 10'd319) begin
+                            //     new_x <= 10'd0;
+                            //     new_y <= new_y + 1;
+                            //     old_y <= (new_y >> 1'b1) + 10'd60;
+                            //     old_x <= 10'd80;
+                            // end else begin
+                            //     new_x <= new_x + 1;
+                            //     old_x <= (new_x >> 1'b1) + 10'd80;
+                            // end
+                            // state <= WAIT_WR_RD;
                             // state <= NHI_ALG;
-                            // done <= 1'b0;
+                            // current_operation_step <= 3'b000;
+                            // addr_base_wr <= addr_base_wr+1'b1;
+                            current_operation_step <= 3'b011;
+                            state <= NHI_ALG;
+                            done <= 1'b0;
                             
                         end
 
                         3'b011: begin
-                            algorithm_current_step <= algorithm_current_step + 1;
+                            //algorithm_current_step <= algorithm_current_step + 1;
                             //addr_out_wr <= addr_out;
                             wr_enable <= 1'b1;
                             wr_wait_counter <= 2'b00;

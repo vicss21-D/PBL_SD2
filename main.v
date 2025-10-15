@@ -70,7 +70,8 @@ module main(
     reg [16:0] addr_mem1, addr_mem2, addr_mem3;
     wire [7:0] data_in_mem3;
     reg [7:0]  data_in_mem1, data_in_mem2;
-    reg        wren_mem1, wren_mem2, wren_mem3;
+    reg        wren_mem1, wren_mem2;
+    wire wren_mem3;
     wire [7:0] data_out_mem1, data_out_mem2, data_out_mem3;
     
     //memoria que guarda a imagem original
@@ -258,6 +259,9 @@ wire clk_vga;
         endcase
     
     end
+    
+    assign wren_mem3 = (current_operation_step == 3'b011) ? 1'b1:1'b0;
+
 
     always @(*) begin
           // Endereçamento

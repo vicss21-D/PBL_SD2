@@ -261,13 +261,8 @@ wire clk_vga;
 
     always @(*) begin
           // Endereçamento
-
-        if (uc_state == COPY_READ || uc_state == COPY_WRITE) begin
-            addr_mem3 = counter_address;
-
-        end else begin
-            addr_mem2 = addr_from_vga_sync; 
-        end
+        addr_mem3 <= counter_address;
+        addr_mem2 <= addr_from_vga_sync;
 
         // Endereçamento das outras memórias (simplificado)
         addr_mem1 = addr_from_memory_control_rd; // MEM1 sempre lê do controle de algoritmo

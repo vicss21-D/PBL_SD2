@@ -109,7 +109,7 @@ module main(
     // 3. Lógica do VGA
     //================================================================
     always @(posedge clk_25_vga) begin
-        localparam X_START=160, Y_START=120, X_END=X_START+320, Y_END=Y_START+240;
+        localparam X_START=159, Y_START=119, X_END=X_START+320, Y_END=Y_START+240;
         reg [16:0] vga_offset;
         if (next_x >= X_START && next_x < X_END && next_y >= Y_START && next_y < Y_END) begin
             inside_box <= 1'b1;

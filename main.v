@@ -25,18 +25,19 @@ module main(
     // 1. Definições, Clocks e Sinais
     //================================================================
     wire clk_100, clk_25_vga;
-    pll pll0(.refclk(CLOCK_50), .rst(1'b0), .outclk_0(clk_100), .outclk_1(clk_25_vga));
+    pll pll0(
+        .refclk(CLOCK_50), 
+        .rst(1'b0), 
+        .outclk_0(clk_100), 
+        .outclk_1(clk_25_vga)
+    );
 
-    localparam NOP = 3'b000, LOAD = 3'b001, STORE = 3'b010, ZOOM_IN_VP = 3'b011;
-    localparam ZOOM_IN_RP = 3'b100, ZOOM_OUT_MP = 3'b101, ZOOM_OUT_VD = 3'b110, RESET_INST = 3'b111;
-    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101;
-    localparam MEM1 = 2'b00, MEM2 = 2'b01, MEM3 = 2'b10;
-
-    reg [7:0] copy_data_buffer;
+    localparam NOP = 3'b000, LOAD = 3'b001, STORE = 3'b010, NHI_ALG = 3'b011;  //Instruções
+    localparam PR_ALG = 3'b100, BA_ALG = 3'b101, NH_ALG = 3'b110, RESET_INST = 3'b111;  //instruções
+    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101; // estados
 
     // --- Sinais de Controle da FSM ---
     reg [2:0] uc_state;
-    reg       addr_control_enable;
     reg [2:0] last_instruction;
     reg [2:0] current_zoom;
     
@@ -46,15 +47,6 @@ module main(
     always @(posedge clk_100) enable_ff <= !ENABLE;
     assign enable_pulse = !ENABLE && !enable_ff;
     
-    // --- Sinais do Pipeline e Algoritmos ---
-    wire [16:0] addr_from_memory_control;
-    wire [2:0]  counter_op;
-    reg [2:0]   counter_op_delayed;
-    reg         enable_mp, enable_rp;
-    wire [31:0]  data_read_from_memory;
-    wire [31:0] data_from_pixel_rep;
-    wire [7:0]  data_from_block_avg;
-    
     // --- Sinais do VGA ---
     wire [9:0] next_x, next_y;
     reg [16:0] addr_from_vga;
@@ -63,108 +55,42 @@ module main(
     //================================================================
     // 2. Lógica de Gerenciamento das 3 Memórias
     //================================================================
-    reg [1:0] vga_mem_select;
-    reg [1:0] alg_read_mem_select;
-    reg [1:0] alg_write_mem_select;
 
     reg [16:0] addr_mem1, addr_mem2, addr_mem3;
     wire [7:0] data_in_mem3;
     reg [7:0]  data_in_mem1, data_in_mem2;
     reg        wren_mem1, wren_mem2;
-    wire wren_mem3;
+    reg wren_mem3;
     wire [7:0] data_out_mem1, data_out_mem2, data_out_mem3;
     
     //memoria que guarda a imagem original
     mem1 memory1(
-    .rdaddress(a1), 
-    .wraddress(), 
-    .clock(clk_100), 
-    .data(data_in_mem1), 
-    .wren(wren_mem1), 
-    .q(data_out_mem1)
+        .rdaddress(addr_for_read), 
+        .wraddress(addr_wr_mem1), 
+        .clock(clk_100), 
+        .data(data_in_mem1), 
+        .wren(wren_mem1), 
+        .q(data_out_mem1)
     );
 
     //memoria de exibiçao
     mem1 memory2(
-    .rdaddress(addr_mem2), 
-    .wraddress(addr_wr_mem2), 
-    .clock(clk_100), 
-    .data(data_out_mem3), 
-    .wren(wren_mem2), 
-    .q(data_out_mem2)
+        .rdaddress(addr_mem2), 
+        .wraddress(addr_wr_mem2), 
+        .clock(clk_100), 
+        .data(data_out_mem3), 
+        .wren(wren_mem2), 
+        .q(data_out_mem2)
     );
     //memoria de trabalho
     mem1 memory3(
         .rdaddress(addr_mem3), // <-- Mudança aqui para permitir controle
-        .wraddress(a3), 
+        .wraddress(addr_for_write), 
         .clock(clk_100), 
-        .data(8'b11100000), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
+        .data(data_to_write), // <-- MUDANÇA PRINCIPAL: Usar o dado do algoritmo
         .wren(wren_mem3), 
         .q(data_out_mem3)
     );
-
-    reg [16:0] a3, a1;
-    reg [9:0] ox,oy, nx,ny;
-
-    reg wr3;
-    reg [1:0] cr;
-
-    reg [2:0] step;
-    reg [2:0] op;
-
-    always @(posedge clk_100) begin
-        if (uc_state == ALGORITHM) begin
-            case(op) 
-                3'b000: begin
-                    case (step)
-                        3'b000: begin
-                            a1 <= ox + oy+10'd320;
-                            cr <= 2'b00;
-                            step <= 3'b001;
-                            op <= 3'b111;
-                        end
-                        3'b001: begin
-                            a3 <= nx + ny*10'd320;
-                            cr <= 2'b00;
-                            step <= 3'b000;
-                            op <= 3'b111;
-                        
-                        if (nx == 10'd319 && ny == 10'd239) begin
-                            addr_control_done <= 1'b1;
-                        end else begin
-                                if (nx == 10'd319) begin
-                                    nx <= 10'd0;
-                                    ny <= ny + 1;
-                                    ox <= 10'd0;
-                                    oy <= ny >> 1;
-                                end else begin
-                                    nx <= nx + 1'b1;
-                                    ox <= (nx >> 1);
-                                end
-                            end
-                        end 
-                    endcase
-                end
-                3'b111: begin
-                    if (cr == 2'b10) begin
-                        wr3 <= 1'b0;
-                        cr <= 2'b00;
-                        op <= 3'b000;
-                    end else begin
-                        cr <= cr + 1'b1;
-                    end
-                end
-
-            endcase
-        end else begin
-            op <= 3'b000;
-            step <= 3'b000;
-            cr <= 2'b00;
-        end
-    end
-
-    wire [7:0] data_out_from_alg;
-    wire       wr_enable_from_alg;
 
     //================================================================
     // 3. Lógica do VGA
@@ -172,7 +98,7 @@ module main(
     always @(posedge clk_25_vga) begin
         localparam X_START=159, Y_START=119, X_END=X_START+320, Y_END=Y_START+240;
         reg [16:0] vga_offset;
-        if (next_x >= X_START && next_x < X_END && next_y >= Y_START && next_y < Y_END) begin
+        if (next_x >= (X_START) && next_x <= (X_END) && next_y >= (Y_START) && next_y <= (Y_END )) begin
             inside_box <= 1'b1;
             vga_offset = (next_y - Y_START) * 320 + (next_x - X_START);
             addr_from_vga <= vga_offset;
@@ -184,12 +110,7 @@ module main(
     
     reg [7:0] data_to_vga_pipe;
     always @(posedge clk_100) begin
-        case(vga_mem_select)
-            MEM1: data_to_vga_pipe <= (inside_box) ? data_out_mem1:8'b0;
-            MEM2: data_to_vga_pipe <= (inside_box) ? data_out_mem2:8'b0;
-            MEM3: data_to_vga_pipe <= (inside_box) ? data_out_mem3:8'b0;
-            default: data_to_vga_pipe <= data_out_mem1;
-        endcase
+        data_to_vga_pipe <= (inside_box) ? data_out_mem2:8'b0;
     end 
     
 
@@ -199,46 +120,52 @@ module main(
     //================================================================
     // 4. Pipeline de Dados do Algoritmo
     //================================================================
-reg [2:0] next_zoom;
-reg has_alg_on_exec;
-reg [16:0] addr_from_vga_sync;
+    reg [2:0] next_zoom;
+    reg has_alg_on_exec;
 
-    reg [1:0] counter;
-    reg has_done;
+    reg [16:0] addr_wr_mem2;
 
-reg [16:0] addr_wr_mem2;
-wire clk_vga;
+    reg [16:0] addr_wr_mem1;
+
+    reg [9:0] new_x, new_y;
+    reg [9:0] old_x, old_y;
+
+    reg [16:0] addr_for_read;
+    reg [16:0] addr_for_write;
+
+    reg [7:0] data_to_write;
+    reg [16:0] needed_steps, current_step;
+    reg [2:0] op_step;
+
+    reg [31:0] data_to_avg;
+
+    reg [7:0] data_to_write_mem1;
+    
     //================================================================
     // 5. Máquina de Estados Finitos (FSM) Principal
     //================================================================
     always @(posedge clk_100) begin
-        
-        addr_from_vga_sync <= addr_from_vga;
+
         case (uc_state) 
             IDLE: begin 
                 has_alg_on_exec     <= 1'b0;
-                addr_control_enable <= 1'b0;
                 FLAG_DONE           <= 1'b1;
-                FLAG_ERROR          <= 1'b0;
                 FLAG_ZOOM_MAX       <= 1'b0;
                 FLAG_ZOOM_MIN       <= 1'b0;
-                has_done <= 1'b0;
-                vga_mem_select <= MEM2;
+                wren_mem1 <= 1'b0;
+                wren_mem2 <= 1'b0;
+                wren_mem3 <= 1'b0;
 
                 if (enable_pulse) begin
                     if (INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
                         uc_state         <= READ_AND_WRITE;
                         last_instruction <= INSTRUCTION;
-                        addr_control_enable <= 1'b1;
-                    end else if (INSTRUCTION >= ZOOM_IN_VP && INSTRUCTION <= ZOOM_OUT_VD) begin
+                    end else if (INSTRUCTION >= NHI_ALG && INSTRUCTION <= NH_ALG) begin
                         uc_state         <= ALGORITHM;
                         last_instruction <= INSTRUCTION;
                         counter_address <= 17'd0;
                         counter_rd_wr <= 2'b0;
                         
-                        // LÓGICA DE PING-PONG
-                        alg_read_mem_select <= MEM1;
-                        alg_write_mem_select <= MEM3;
                     end else if (INSTRUCTION == RESET_INST) begin
                         uc_state <= RESET;
                     end
@@ -246,44 +173,330 @@ wire clk_vga;
             end
             
             READ_AND_WRITE: begin
+                if (MEM_ADDR > 17'd76799) begin
+                    FLAG_ERROR <= 1'b1;
+                end
                 FLAG_DONE <= 1'b0;
-                has_alg_on_exec <= 1'b1;
-                addr_control_enable <= 1'b1;
-                
-                if (addr_control_done) begin
-                    if (last_instruction == LOAD) DATA_OUT <= data_out_from_alg;
-                    uc_state <= IDLE;
+                if (last_instruction == STORE) begin
+                    addr_wr_mem1 <= MEM_ADDR;
+                    data_to_write_mem1 <= DATA_IN;
+                    wren_mem1 <= 1'b1;
+                    uc_state <= 3'b111;
+                    counter_rd_wr <= 2'b00;
+                end else begin
+                    addr_for_read <= MEM_ADDR;
+                    counter_rd_wr <= 2'b0;
+                    uc_state <= 3'b111;
                 end
             end
 
             ALGORITHM: begin
                 FLAG_DONE <= 1'b0;
-                has_alg_on_exec <= 1'b1;
-                
+                case (last_instruction)
+                    PR_ALG: begin
+                        if (!has_alg_on_exec) begin
+                            current_step <= 19'd0;
+                            has_alg_on_exec <= 1'b1;
+                            needed_steps <= 19'd19199;
+                            op_step <= 3'b0;
+                            old_x <= 10'd80;
+                            old_y <= 10'd60;
+                            new_x <= 10'b0;
+                            new_y <= 10'b0;
 
-                addr_control_enable <= 1'b1; 
+                        end else begin
+                            if (current_step >= needed_steps) begin
+                                counter_address <= 17'd0;
+                                counter_rd_wr <= 2'b0;
+                                has_alg_on_exec <= 1'b0;
+                                wren_mem3 <= 1'b0;
+                                addr_mem3 <= 17'd0;
+                                uc_state <= COPY_READ;
 
-                if (addr_control_done) begin //ao fim do algoritmo inicia a etapa de copia
-                    addr_control_enable <= 1'b0;
-                    counter_rd_wr <= 2'b00;
-                    counter_address <= 17'd0; // Zera o contador para a cópia
-                    wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
-                    uc_state <= COPY_READ;
-                end
+                            end else begin
+                                if (op_step == 3'b000) begin
+                                    addr_for_read <= old_x + (old_y*10'd320);
+                                    counter_rd_wr <= 2'b0;
+                                    op_step <= 3'b001;
+                                    wren_mem3 <= 1'b0;
+                                    uc_state <= 3'b111;
+                                end else if (op_step == 3'b001) begin
+                                    data_to_write <= data_out_mem1;
+                                    counter_rd_wr <= 2'b0;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    wren_mem3 <= 1'b1;
+                                    op_step <= 3'b010;
+                                    uc_state <= 3'b111;
+                                    new_x <= new_x + 1'b1;
+                                end else if (op_step == 3'b010) begin
+                                    data_to_write <= data_out_mem1;
+                                    counter_rd_wr <= 2'b0;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    wren_mem3 <= 1'b1;
+                                    op_step <= 3'b011;
+                                    uc_state <= 3'b111;
+                                    new_x <= new_x - 1'b1;
+                                    new_y <= new_y + 1'b1;
+                                end else if (op_step == 3'b011) begin
+                                    data_to_write <= data_out_mem1;
+                                    counter_rd_wr <= 2'b0;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    wren_mem3 <= 1'b1;
+                                    op_step <= 3'b100;
+                                    uc_state <= 3'b111;
+                                    new_x <= new_x + 1'b1;
+                                end else if (op_step == 3'b100) begin
+                                    data_to_write <= data_out_mem1;
+                                    counter_rd_wr <= 2'b0;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    wren_mem3 <= 1'b1;
+                                    op_step <= 3'b000;
+                                    uc_state <= 3'b111;
+                                    if (new_x >= 10'd319) begin
+                                        new_x <= 10'd0;
+                                        new_y <= new_y + 1'b1;
+                                        old_x <= 10'd80;
+                                        old_y <= old_y + 1'b1;
+                                    end else begin
+                                        new_x <= new_x + 1'b1;
+                                        new_y <= new_y - 1'b1;
+                                        old_x <= old_x + 1'b1;
+                                        current_step <= current_step + 1;
+                                    end
+                                end
+                            end
+                        end
+                    end
+
+                    NHI_ALG: begin
+                        if (!has_alg_on_exec) begin
+                            has_alg_on_exec <= 1'b1;
+                            current_step <= 19'd0;
+                            needed_steps <= 19'd76799;
+                            op_step <= 3'b0;
+                            old_x <= 10'd80;
+                            old_y <= 10'd60;
+                            new_x <= 10'b0;
+                            new_y <= 10'b0;
+
+                        end else begin
+                            if (current_step >= needed_steps) begin
+                                counter_address <= 17'd0;
+                                counter_rd_wr <= 2'b0;
+                                has_alg_on_exec <= 1'b0;
+                                wren_mem3 <= 1'b0;
+                                addr_mem3 <= 17'd0;
+                                uc_state <= COPY_READ;
+
+                            end else begin
+                                if (op_step == 3'b000) begin
+                                    addr_for_read <= old_x + (old_y*10'd320);
+                                    counter_rd_wr <= 2'b0;
+                                    op_step <= 3'b001;
+                                    wren_mem3 <= 1'b0;
+                                    uc_state <= 3'b111;
+                                end else if (op_step == 3'b001) begin
+                                    current_step <= current_step + 1'b1;
+                                    data_to_write <= data_out_mem1;
+                                    counter_rd_wr <= 2'b0;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    wren_mem3 <= 1'b1;
+                                    op_step <= 3'b000;
+                                    uc_state <= 3'b111;
+                                    if (new_x >= 10'd319) begin
+                                        new_x <= 10'd0;
+                                        new_y <= new_y + 1'b1;
+                                        old_x <= 10'd80;
+                                        old_y <= (new_y>>1'b1) + 10'd60;
+                                    end else begin
+                                        new_x <= new_x + 1'b1;
+                                        old_x <= (new_x>>1'b1) + 10'd80;
+                                    end
+                                end
+                            end
+                        end
+
+                    end
+                    BA_ALG: begin
+                        if (!has_alg_on_exec) begin
+                            has_alg_on_exec <= 1'b1;
+                            current_step <= 19'd0;
+                            needed_steps <= 19'd76799;
+                            op_step <= 3'b0;
+                            new_x <= 10'b0;
+                            new_y <= 10'b0;
+                            old_x <= 10'd0;
+                            old_y <= 10'd0;
+                            
+                        end else begin
+                            if (current_step >= needed_steps) begin
+                                counter_address <= 17'd0;
+                                counter_rd_wr <= 2'b0;
+                                has_alg_on_exec <= 1'b0;
+                                wren_mem3 <= 1'b0;
+                                addr_mem3 <= 17'd0;
+                                uc_state <= COPY_READ;
+
+                            end else begin
+                                if ((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) begin
+                                    current_step <= current_step + 1'b1;
+                                    data_to_write <= 8'b0;
+                                    counter_rd_wr <= 2'b0;
+                                    wren_mem3 <= 1'b1;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    op_step <= 3'b000;
+                                    if(new_x >= 10'd319) begin
+                                        new_x <= 10'd0;
+                                        new_y <= new_y + 1'b1;
+                                    end else begin
+                                        new_x <= new_x + 1'b1;
+                                    end
+                                    uc_state <= 3'b111;
+                                end else begin
+                                    if (op_step == 3'b000) begin
+                                        addr_for_read <= old_x + (old_y*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b0;
+                                        uc_state <= 3'b111;
+                                        old_x <= old_x + 1'b1;
+                                        op_step <= 3'b001;
+                                    end else if (op_step == 3'b001) begin
+                                        data_to_avg[7:0] <= data_out_mem1;
+                                        addr_for_read <= old_x + (old_y*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b0;
+                                        uc_state <= 3'b111;
+                                        old_x <= old_x - 1'b1;
+                                        old_y <= old_y + 1'b1;
+                                        op_step <= 3'b010;
+                                    end else if (op_step == 3'b010) begin
+                                        data_to_avg[15:8] <= data_out_mem1;
+                                        addr_for_read <= old_x + (old_y*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b0;
+                                        uc_state <= 3'b111;
+                                        old_x <= old_x + 1'b1;
+                                        op_step <= 3'b011;
+                                    end else if (op_step == 3'b011) begin
+                                        data_to_avg[23:16] <= data_out_mem1;
+                                        addr_for_read <= old_x + (old_y*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b0;
+                                        uc_state <= 3'b111;
+                                        if (old_x >= 10'd319) begin
+                                            old_x <= 10'd0;
+                                            old_y <= old_y + 1'b1;
+                                        end else begin
+                                            old_x <= old_x + 1'b1;
+                                            old_y <= old_y - 1'b1;
+                                        end
+                                        op_step <= 3'b100;
+                                    end else if (op_step == 3'b100) begin
+                                        data_to_avg[31:24] <= data_out_mem1;
+                                        uc_state <= ALGORITHM;
+                                        op_step <= 3'b101;
+                                    end else if (op_step == 3'b101) begin
+                                        current_step <= current_step + 1'b1;
+                                        data_to_write <= (data_to_avg>> 2'd2);
+                                        addr_for_write <= new_x + (new_y*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b1;
+                                        op_step <= 3'b000;
+                                        if (new_x >= 10'd319) begin
+                                            new_x <= 10'd0;
+                                            new_y <= new_y + 1'b1;
+                                        end else begin
+                                            new_x <= new_x + 1'b1;
+                                        end
+                                        uc_state <= 3'b111;
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    NH_ALG: begin
+                        if (!has_alg_on_exec) begin
+                            has_alg_on_exec <= 1'b1;
+                            current_step <= 19'd0;
+                            needed_steps <= 19'd76799;
+                            op_step <= 3'b0;
+                            new_x <= 10'b0;
+                            new_y <= 10'b0;
+                            old_x <= 10'd0;
+                            old_y <= 10'd0;
+                            
+                        end else begin
+                            if (current_step >= needed_steps) begin
+                                counter_address <= 17'd0;
+                                counter_rd_wr <= 2'b0;
+                                has_alg_on_exec <= 1'b0;
+                                wren_mem3 <= 1'b0;
+                                addr_mem3 <= 17'd0;
+                                uc_state <= COPY_READ;
+
+                            end else begin
+                                if ((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) begin
+                                    current_step <= current_step + 1'b1;
+                                    data_to_write <= 8'b0;
+                                    counter_rd_wr <= 2'b0;
+                                    wren_mem3 <= 1'b1;
+                                    addr_for_write <= new_x + (new_y*10'd320);
+                                    op_step <= 3'b000;
+                                    if(new_x >= 10'd319) begin
+                                        new_x <= 10'd0;
+                                        new_y <= new_y + 1'b1;
+                                    end else begin
+                                        new_x <= new_x + 1'b1;
+                                    end
+                                    uc_state <= 3'b111;
+                                end else begin
+                                    if (op_step == 3'b000) begin
+                                        addr_for_read <= (old_x<<1) + ((old_y<<1)*10'd320);
+                                        counter_rd_wr <= 2'b0;
+                                        wren_mem3 <= 1'b0;
+                                        uc_state <= 3'b111;
+                                        if (old_x >= 10'd159) begin
+                                            old_x <= 10'd0;
+                                            old_y <= old_y + 2'd1;
+                                        end else begin
+                                            old_x <= old_x + 2'd1;
+                                        end
+                                        op_step <= 3'b001;
+                                    end else if (op_step == 3'b001) begin
+                                        current_step <= current_step + 1'b1;
+                                        data_to_write <= data_out_mem1;
+                                        counter_rd_wr <= 2'b0;
+                                        addr_for_write <= new_x + (new_y*10'd320);
+                                        wren_mem3 <= 1'b1;
+                                        op_step <= 3'b000;
+                                        uc_state <= 3'b111;
+                                        if (new_x >= 10'd319) begin
+                                            new_x <= 10'd0;
+                                            new_y <= new_y + 1'b1;
+                                        end else begin
+                                            new_x <= new_x + 1'b1;
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                endcase
             end
 
             RESET: begin
+                FLAG_DONE <= 1'b0;
                 current_zoom   <= 3'b100;
-                vga_mem_select <= MEM3; // VGA sempre reseta para a memória original
-                alg_read_mem_select <= MEM1;
-                alg_write_mem_select <= MEM3;
-                uc_state       <= IDLE;
+                
+                last_instruction <= RESET;
+                counter_address <= 17'd0;
+                counter_rd_wr <= 2'b0;
+                addr_for_read <= 17'd0;
+                uc_state       <= COPY_READ;
+
             end
 
             COPY_READ: begin
-            // Neste ciclo, o endereço de leitura da MEM3 (addr_mem3) é setado
-            // para 'counter_address' pelo bloco always@(*).
-            // A saída 'data_out_mem3' estará disponível no próximo ciclo de clock.
                 if(counter_rd_wr == 2'b10) begin
                     wren_mem2 <= 1'b0; // Garante que não estamos escrevendo nada ainda
                     counter_rd_wr <= 2'b00;
@@ -295,8 +508,7 @@ wire clk_vga;
             end
 
             COPY_WRITE: begin
-            // O dado lido da MEM3 no ciclo anterior já está disponível em 'data_out_mem3'.
-                data_in_mem2 <= data_out_mem3; // Prepara o dado para ser escrito
+                data_in_mem2 <=  (last_instruction == RESET || last_instruction == STORE) ? data_out_mem1:data_out_mem3; // Prepara o dado para ser escrito
                 addr_wr_mem2 <= counter_address; // Define o endereço de escrita na MEM2
                 wren_mem2    <= 1'b1;             // Habilita a escrita na MEM2
                 
@@ -304,11 +516,32 @@ wire clk_vga;
                     counter_rd_wr <= 2'b00;
                     if (counter_address == 17'd76799) begin // 320*240 - 1
                         uc_state <= IDLE; // Cópia concluída
-                        vga_mem_select <= MEM2; // Aponta o VGA para a nova imagem
                         FLAG_DONE <= 1'b1;
                     end else begin
                         counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
+                        addr_for_read <= counter_address; // Atualiza o endereço de leitura
+                        addr_mem3 <= counter_address;
                         uc_state <= COPY_READ; // Volta para o estado de leitura
+                    end
+                end else begin
+                    counter_rd_wr <= counter_rd_wr + 1;
+                end
+            end
+
+            3'b111: begin
+                if (counter_rd_wr == 2'b10) begin
+                    counter_rd_wr <= 2'b00;
+                    if (last_instruction == LOAD) begin
+                        uc_state <= IDLE;
+                        DATA_OUT <= data_out_mem1;
+                        FLAG_DONE <= 1'b1;
+                    end else if (last_instruction == STORE) begin
+                        uc_state <= COPY_READ;
+                        addr_for_read <= 17'd0;
+                        counter_rd_wr <= 2'b0;
+                        counter_address <= 17'd0;
+                    end else begin
+                        uc_state <= ALGORITHM;
                     end
                 end else begin
                     counter_rd_wr <= counter_rd_wr + 1;
@@ -319,17 +552,13 @@ wire clk_vga;
         endcase
     
     end
-    
-    assign wren_mem3 = (counter_op == 3'b011 && !addr_control_done) ? 1'b1:1'b0;
+
 
 
     always @(*) begin
           // Endereçamento
-        addr_mem3 <= counter_address;
-        addr_mem2 <= addr_from_vga_sync;
-
-        // Endereçamento das outras memórias (simplificado)
-        addr_mem1 = addr_from_memory_control_rd; // MEM1 sempre lê do controle de algoritmo
+        
+        addr_mem2 <= addr_from_vga;
     end
 
     wire [16:0] addr_from_memory_control_wr;
@@ -338,18 +567,6 @@ wire clk_vga;
     //================================================================
     // 6. Instâncias de Módulos
     //================================================================
-    memory_control addr_control(.addr_base(MEM_ADDR), 
-    .clock(clk_100), 
-    .operation(last_instruction), 
-    .current_zoom(current_zoom), 
-    .enable(addr_control_enable), 
-    .addr_out_wr(addr_from_memory_control_wr), 
-    .done(), 
-    .wr_enable(wr_enable_from_alg), 
-    .counter_op(counter_op), 
-    .color_in(8'b11100000), 
-    .color_out(data_in_mem3), 
-    .addr_out_rd(addr_from_memory_control_rd));
 
     vga_module vga_out(.clock(clk_25_vga), 
     .reset(1'b0), 
@@ -364,9 +581,5 @@ wire clk_vga;
     .sync(VGA_SYNC), 
     .clk(VGA_CLK), 
     .blank(VGA_BLANK_N));
-
-    // --- Conexões para portas de debug ---
-    assign addr_in_memory = addr_from_memory_control;
-    assign data_in_memory = data_out_from_alg;
 
 endmodule

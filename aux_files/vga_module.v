@@ -149,9 +149,9 @@ module vga_module (
             //////////////////////////////// COLOR OUT ///////////////////////////////
             //////////////////////////////////////////////////////////////////////////
             // Assign colors if in active mode
-            red_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?{color_in[7:5],5'd_0}:8'd_0):8'd_0 ;
-            green_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?{color_in[4:2],5'd_0}:8'd_0):8'd_0 ;
-            blue_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?{color_in[1:0],5'd_0}:8'd_0):8'd_0 ;
+            red_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?color_in:8'd_0):8'd_0 ;
+            green_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?color_in:8'd_0):8'd_0 ;
+            blue_reg<=(h_state==H_ACTIVE_STATE)?((v_state==V_ACTIVE_STATE)?color_in:8'd_0):8'd_0 ;
 
         end
     end

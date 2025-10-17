@@ -19,7 +19,7 @@
 // the top level entity of the current Quartus project .The user can use this   
 // testbench to simulate his design using a third-party simulation tool .       
 // *****************************************************************************
-// Generated on "10/08/2025 12:01:08"
+// Generated on "10/15/2025 11:46:16"
                                                                                 
 // Verilog Test Bench (with test vectors) for design :                          main
 // 
@@ -34,7 +34,7 @@ reg CLOCK_50;
 reg [7:0] DATA_IN;
 reg ENABLE;
 reg [2:0] INSTRUCTION;
-reg [17:0] MEM_ADDR;
+reg [16:0] MEM_ADDR;
 // wires                                               
 wire [7:0] DATA_OUT;
 wire FLAG_DONE;
@@ -50,7 +50,7 @@ wire [7:0] VGA_R;
 wire VGA_SYNC;
 wire VGA_V_SYNC_N;
 wire addr_control_done;
-wire [18:0] addr_in_memory;
+wire [16:0] addr_in_memory;
 wire [7:0] data_in_memory;
 wire [2:0] op_count;
 
@@ -143,107 +143,17 @@ end
 // INSTRUCTION[ 2 ]
 initial
 begin
-	INSTRUCTION[2] = 1'b1;
+	INSTRUCTION[2] = 1'b0;
 end 
 // INSTRUCTION[ 1 ]
 initial
 begin
-	INSTRUCTION[1] = 1'b0;
+	INSTRUCTION[1] = 1'b1;
 end 
 // INSTRUCTION[ 0 ]
 initial
 begin
-	INSTRUCTION[0] = 1'b0;
-end 
-// MEM_ADDR[ 17 ]
-initial
-begin
-	MEM_ADDR[17] = 1'b0;
-end 
-// MEM_ADDR[ 16 ]
-initial
-begin
-	MEM_ADDR[16] = 1'b0;
-end 
-// MEM_ADDR[ 15 ]
-initial
-begin
-	MEM_ADDR[15] = 1'b0;
-end 
-// MEM_ADDR[ 14 ]
-initial
-begin
-	MEM_ADDR[14] = 1'b0;
-end 
-// MEM_ADDR[ 13 ]
-initial
-begin
-	MEM_ADDR[13] = 1'b0;
-end 
-// MEM_ADDR[ 12 ]
-initial
-begin
-	MEM_ADDR[12] = 1'b0;
-end 
-// MEM_ADDR[ 11 ]
-initial
-begin
-	MEM_ADDR[11] = 1'b0;
-end 
-// MEM_ADDR[ 10 ]
-initial
-begin
-	MEM_ADDR[10] = 1'b0;
-end 
-// MEM_ADDR[ 9 ]
-initial
-begin
-	MEM_ADDR[9] = 1'b0;
-end 
-// MEM_ADDR[ 8 ]
-initial
-begin
-	MEM_ADDR[8] = 1'b0;
-end 
-// MEM_ADDR[ 7 ]
-initial
-begin
-	MEM_ADDR[7] = 1'b0;
-end 
-// MEM_ADDR[ 6 ]
-initial
-begin
-	MEM_ADDR[6] = 1'b0;
-end 
-// MEM_ADDR[ 5 ]
-initial
-begin
-	MEM_ADDR[5] = 1'b0;
-end 
-// MEM_ADDR[ 4 ]
-initial
-begin
-	MEM_ADDR[4] = 1'b0;
-end 
-// MEM_ADDR[ 3 ]
-initial
-begin
-	MEM_ADDR[3] = 1'b0;
-end 
-// MEM_ADDR[ 2 ]
-initial
-begin
-	MEM_ADDR[2] = 1'b0;
-end 
-// MEM_ADDR[ 1 ]
-initial
-begin
-	MEM_ADDR[1] = 1'b0;
-end 
-// MEM_ADDR[ 0 ]
-initial
-begin
-	MEM_ADDR[0] = 1'b0;
+	INSTRUCTION[0] = 1'b1;
 end 
 endmodule
 

@@ -56,7 +56,8 @@ module main(
     // 2. Lógica de Gerenciamento das 3 Memórias
     //================================================================
 
-    reg [16:0] addr_mem1, addr_mem2, addr_mem3;
+    reg [16:0] addr_mem2, addr_mem3;
+    wire [16:0] addr_mem1;
     wire [7:0] data_in_mem3;
     reg [7:0]  data_in_mem1, data_in_mem2;
     reg        wren_mem1, wren_mem2;
@@ -65,7 +66,7 @@ module main(
     
     //memoria que guarda a imagem original
     mem1 memory1(
-        .rdaddress(addr_for_read), 
+        .rdaddress(addr_mem1), 
         .wraddress(addr_wr_mem1), 
         .clock(clk_100), 
         .data(data_in_mem1), 
@@ -78,7 +79,7 @@ module main(
         .rdaddress(addr_mem2), 
         .wraddress(addr_wr_mem2), 
         .clock(clk_100), 
-        .data(data_out_mem3), 
+        .data(data_in_mem2), 
         .wren(wren_mem2), 
         .q(data_out_mem2)
     );
@@ -91,6 +92,8 @@ module main(
         .wren(wren_mem3), 
         .q(data_out_mem3)
     );
+
+    assign addr_mem1 = (uc_state != ALGORITHM && uc_state != 3'b111) ? addr_for_copy: addr_for_read;
 
     //================================================================
     // 3. Lógica do VGA
@@ -157,16 +160,20 @@ module main(
                 wren_mem3 <= 1'b0;
 
                 if (enable_pulse) begin
+                    last_instruction <= INSTRUCTION;
+                    counter_address <= 17'd0;
+                    counter_rd_wr <= 2'b0;
                     if (INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
                         uc_state         <= READ_AND_WRITE;
-                        last_instruction <= INSTRUCTION;
+                        //last_instruction <= INSTRUCTION;
                     end else if (INSTRUCTION >= NHI_ALG && INSTRUCTION <= NH_ALG) begin
                         uc_state         <= ALGORITHM;
-                        last_instruction <= INSTRUCTION;
+                        //last_instruction <= INSTRUCTION;
                         counter_address <= 17'd0;
                         counter_rd_wr <= 2'b0;
                         
                     end else if (INSTRUCTION == RESET_INST) begin
+                        //last_instruction <= 3'b111;
                         uc_state <= RESET;
                     end
                 end
@@ -191,6 +198,7 @@ module main(
             end
 
             ALGORITHM: begin
+                wren_mem1 <= 1'b0;
                 FLAG_DONE <= 1'b0;
                 case (last_instruction)
                     PR_ALG: begin
@@ -210,7 +218,7 @@ module main(
                                 counter_rd_wr <= 2'b0;
                                 has_alg_on_exec <= 1'b0;
                                 wren_mem3 <= 1'b0;
-                                addr_mem3 <= 17'd0;
+                                
                                 uc_state <= COPY_READ;
 
                             end else begin
@@ -285,7 +293,7 @@ module main(
                                 counter_rd_wr <= 2'b0;
                                 has_alg_on_exec <= 1'b0;
                                 wren_mem3 <= 1'b0;
-                                addr_mem3 <= 17'd0;
+                                
                                 uc_state <= COPY_READ;
 
                             end else begin
@@ -334,7 +342,7 @@ module main(
                                 counter_rd_wr <= 2'b0;
                                 has_alg_on_exec <= 1'b0;
                                 wren_mem3 <= 1'b0;
-                                addr_mem3 <= 17'd0;
+                                
                                 uc_state <= COPY_READ;
 
                             end else begin
@@ -431,7 +439,7 @@ module main(
                                 counter_rd_wr <= 2'b0;
                                 has_alg_on_exec <= 1'b0;
                                 wren_mem3 <= 1'b0;
-                                addr_mem3 <= 17'd0;
+                                
                                 uc_state <= COPY_READ;
 
                             end else begin
@@ -488,10 +496,8 @@ module main(
                 FLAG_DONE <= 1'b0;
                 current_zoom   <= 3'b100;
                 
-                last_instruction <= RESET;
                 counter_address <= 17'd0;
                 counter_rd_wr <= 2'b0;
-                addr_for_read <= 17'd0;
                 uc_state       <= COPY_READ;
 
             end
@@ -508,7 +514,13 @@ module main(
             end
 
             COPY_WRITE: begin
-                data_in_mem2 <=  (last_instruction == RESET || last_instruction == STORE) ? data_out_mem1:data_out_mem3; // Prepara o dado para ser escrito
+
+                if (last_instruction == RESET_INST || last_instruction == STORE) begin
+                    data_in_mem2 <= data_out_mem1;
+                end else begin
+                    data_in_mem2 <= data_out_mem3;
+                end
+                //data_in_mem2 <=  (last_instruction == RESET || last_instruction == STORE) ? data_out_mem1:data_out_mem3; // Prepara o dado para ser escrito
                 addr_wr_mem2 <= counter_address; // Define o endereço de escrita na MEM2
                 wren_mem2    <= 1'b1;             // Habilita a escrita na MEM2
                 
@@ -519,8 +531,6 @@ module main(
                         FLAG_DONE <= 1'b1;
                     end else begin
                         counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
-                        addr_for_read <= counter_address; // Atualiza o endereço de leitura
-                        addr_mem3 <= counter_address;
                         uc_state <= COPY_READ; // Volta para o estado de leitura
                     end
                 end else begin
@@ -537,10 +547,11 @@ module main(
                         FLAG_DONE <= 1'b1;
                     end else if (last_instruction == STORE) begin
                         uc_state <= COPY_READ;
-                        addr_for_read <= 17'd0;
+                        wren_mem1 <= 1'b0;
                         counter_rd_wr <= 2'b0;
                         counter_address <= 17'd0;
                     end else begin
+                        wren_mem3 <= 1'b0;
                         uc_state <= ALGORITHM;
                     end
                 end else begin
@@ -553,10 +564,16 @@ module main(
     
     end
 
-
+    reg [16:0] addr_for_copy;
 
     always @(*) begin
           // Endereçamento
+
+          if (last_instruction == RESET_INST || last_instruction == STORE) begin
+            addr_for_copy <= counter_address;
+          end else begin
+            addr_mem3 <= counter_address;
+          end
         
         addr_mem2 <= addr_from_vga;
     end

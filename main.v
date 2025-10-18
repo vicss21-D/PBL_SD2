@@ -10,8 +10,8 @@ module main(
     output reg [7:0] DATA_OUT,
     output reg FLAG_DONE,
     output reg FLAG_ERROR,
-    output reg FLAG_ZOOM_MAX,
-    output reg FLAG_ZOOM_MIN,
+    output FLAG_ZOOM_MAX,
+    output FLAG_ZOOM_MIN,
     output [16:0] addr_in_memory,
     output [7:0] data_in_memory,
     output [2:0] op_count,
@@ -21,6 +21,7 @@ module main(
     output VGA_BLANK_N, output VGA_H_SYNC_N, output VGA_V_SYNC_N, output VGA_CLK, output VGA_SYNC
 );
 
+    assign op_count = current_zoom;
     //================================================================
     // 1. Definições, Clocks e Sinais
     //================================================================
@@ -39,8 +40,7 @@ module main(
     // --- Sinais de Controle da FSM ---
     reg [2:0] uc_state;
     reg [2:0] last_instruction;
-    reg [2:0] current_zoom;
-    
+
     // --- Lógica de Gatilho ---
     reg  enable_ff;
     wire enable_pulse;
@@ -124,6 +124,8 @@ module main(
     // 4. Pipeline de Dados do Algoritmo
     //================================================================
     reg [2:0] next_zoom;
+    reg [2:0] current_zoom;
+    
     reg has_alg_on_exec;
 
     reg [16:0] addr_wr_mem2;
@@ -138,11 +140,14 @@ module main(
 
     reg [7:0] data_to_write;
     reg [16:0] needed_steps, current_step;
-    reg [2:0] op_step;
+    reg [3:0] op_step;
 
     reg [31:0] data_to_avg;
 
     reg [7:0] data_to_write_mem1;
+
+    assign FLAG_ZOOM_MAX = (current_zoom == 3'b111) ? 1'b1: 1'b0;
+    assign FLAG_ZOOM_MIN = (current_zoom == 3'b001) ? 1'b1:1'b0;
     
     //================================================================
     // 5. Máquina de Estados Finitos (FSM) Principal
@@ -151,29 +156,67 @@ module main(
 
         case (uc_state) 
             IDLE: begin 
+
+                if (current_zoom == 3'b000) begin
+                    current_zoom <= 3'b100;
+                end
                 has_alg_on_exec     <= 1'b0;
                 FLAG_DONE           <= 1'b1;
-                FLAG_ZOOM_MAX       <= 1'b0;
-                FLAG_ZOOM_MIN       <= 1'b0;
                 wren_mem1 <= 1'b0;
                 wren_mem2 <= 1'b0;
                 wren_mem3 <= 1'b0;
+                current_zoom <= next_zoom;
 
                 if (enable_pulse) begin
-                    last_instruction <= INSTRUCTION;
+                    //last_instruction <= INSTRUCTION;
                     counter_address <= 17'd0;
                     counter_rd_wr <= 2'b0;
                     if (INSTRUCTION == LOAD || INSTRUCTION == STORE) begin
                         uc_state         <= READ_AND_WRITE;
-                        //last_instruction <= INSTRUCTION;
+                        last_instruction <= INSTRUCTION;
                     end else if (INSTRUCTION >= NHI_ALG && INSTRUCTION <= NH_ALG) begin
+
+                        case (INSTRUCTION)
+                            NH_ALG:begin
+                                next_zoom <= (current_zoom >= 3'b010) ? current_zoom - 1'b1:current_zoom;
+                                if (current_zoom == 3'b100 || current_zoom == 3'b011 || current_zoom == 3'b010) begin
+                                    last_instruction <= NH_ALG;
+                                end else begin
+                                    last_instruction <= NHI_ALG;
+                                end
+                            end
+                            NHI_ALG: begin
+                                next_zoom <= (current_zoom <= 3'b110) ? current_zoom + 1'b1: current_zoom;
+                                if (current_zoom == 3'b100 || current_zoom == 3'b101 || current_zoom == 3'b110) begin
+                                    last_instruction <= NHI_ALG;
+                                end else begin
+                                    last_instruction <= NH_ALG;
+                                end
+                            end
+                            BA_ALG:begin
+                                next_zoom <= (current_zoom >= 3'b010) ? current_zoom - 1'b1:current_zoom;
+                                if (current_zoom == 3'b100 || current_zoom == 3'b011 || current_zoom == 3'b010) begin
+                                    last_instruction <= BA_ALG;
+                                end else begin
+                                    last_instruction <= PR_ALG;
+                                end
+                            end
+                            PR_ALG: begin
+                                next_zoom <= (current_zoom <= 3'b110) ? current_zoom + 1'b1: current_zoom;
+                                if (next_zoom == 3'b100 || next_zoom == 3'b101 || next_zoom == 3'b110) begin
+                                    last_instruction <= PR_ALG;
+                                end else if (next_zoom < 3'b100) begin
+                                    last_instruction <= BA_ALG;
+                                end
+                            end
+
+                        endcase
                         uc_state         <= ALGORITHM;
-                        //last_instruction <= INSTRUCTION;
                         counter_address <= 17'd0;
                         counter_rd_wr <= 2'b0;
                         
                     end else if (INSTRUCTION == RESET_INST) begin
-                        //last_instruction <= 3'b111;
+                        last_instruction <= 3'b111;
                         uc_state <= RESET;
                     end
                 end
@@ -207,10 +250,22 @@ module main(
                             has_alg_on_exec <= 1'b1;
                             needed_steps <= 19'd19199;
                             op_step <= 3'b0;
-                            old_x <= 10'd80;
-                            old_y <= 10'd60;
                             new_x <= 10'b0;
                             new_y <= 10'b0;
+
+                            if (next_zoom == 3'b101) begin
+                                old_x <= 10'd80;
+                                old_y <= 10'd60;
+                            end else if (next_zoom == 3'b110) begin
+                                old_x <= 10'd120;
+                                old_y <= 10'd90;
+                            end else if (next_zoom == 3'b111) begin
+                                old_x <= 10'd140;
+                                old_y <= 10'd105;
+                            end else begin
+                                old_x <= 10'd0;
+                                old_y <= 10'd0;
+                            end
 
                         end else begin
                             if (current_step >= needed_steps) begin
@@ -263,12 +318,34 @@ module main(
                                     if (new_x >= 10'd319) begin
                                         new_x <= 10'd0;
                                         new_y <= new_y + 1'b1;
-                                        old_x <= 10'd80;
-                                        old_y <= old_y + 1'b1;
+
+                                        if (next_zoom == 3'b101) begin
+                                            old_x <= 10'd80;
+                                            old_y <= (new_y >> 2'b1) + 10'd60;
+                                        end else if (next_zoom == 3'b110) begin
+                                            old_x <= 10'd120;
+                                            old_y <= (new_y >> 2'd2) + 10'd90;
+                                        end else  if (next_zoom == 3'b111) begin
+                                            old_x <= 10'd140;
+                                            old_y <= (new_y>>2'd3) + 10'd105;
+
+                                        end else begin
+                                            old_x <= new_x;
+                                            old_y <= new_y;
+                                        end
                                     end else begin
                                         new_x <= new_x + 1'b1;
                                         new_y <= new_y - 1'b1;
-                                        old_x <= old_x + 1'b1;
+                                        if (next_zoom == 3'b101) begin
+                                            old_x <= (new_x >> 1'b1) + 10'd80;
+                                        end else if(next_zoom == 3'b110) begin
+                                            old_x <= (new_x >> 2'd2) + 10'd120;
+                                        end else if (next_zoom == 3'b111) begin
+                                            old_x <= (new_x >> 2'd3) + 10'd140;
+                                        end else begin
+                                            old_x <= new_x;
+                                        end
+    
                                         current_step <= current_step + 1;
                                     end
                                 end
@@ -495,6 +572,7 @@ module main(
             RESET: begin
                 FLAG_DONE <= 1'b0;
                 current_zoom   <= 3'b100;
+                next_zoom <= 3'b100;
                 
                 counter_address <= 17'd0;
                 counter_rd_wr <= 2'b0;
@@ -528,6 +606,7 @@ module main(
                     counter_rd_wr <= 2'b00;
                     if (counter_address == 17'd76799) begin // 320*240 - 1
                         uc_state <= IDLE; // Cópia concluída
+                        current_zoom <= next_zoom;
                         FLAG_DONE <= 1'b1;
                     end else begin
                         counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel

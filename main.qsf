@@ -103,4 +103,9 @@ set_global_assignment -name QIP_FILE mem1.qip
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_location_assignment PIN_Y21 -to op_count[2]
+set_location_assignment PIN_W21 -to op_count[1]
+set_location_assignment PIN_W20 -to op_count[0]
+set_location_assignment PIN_W16 -to FLAG_ZOOM_MAX
+set_location_assignment PIN_V17 -to FLAG_ZOOM_MIN
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

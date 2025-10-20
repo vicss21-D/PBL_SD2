@@ -21,7 +21,7 @@ module main(
     output VGA_BLANK_N, output VGA_H_SYNC_N, output VGA_V_SYNC_N, output VGA_CLK, output VGA_SYNC
 );
 
-    assign op_count = current_zoom;
+    assign op_count = uc_state;
     //================================================================
     // 1. Definições, Clocks e Sinais
     //================================================================
@@ -175,45 +175,106 @@ module main(
                         uc_state         <= READ_AND_WRITE;
                         last_instruction <= INSTRUCTION;
                     end else if (INSTRUCTION >= NHI_ALG && INSTRUCTION <= NH_ALG) begin
+                            case (INSTRUCTION)
+                                NH_ALG:begin
+                                    if (FLAG_ZOOM_MIN) begin
+                                        FLAG_DONE <= 1'b1;
+                                        FLAG_ERROR <= 1'b1;
+                                        uc_state <= IDLE;
+                                    end else begin
+                                        next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
+                                        if (next_zoom == 3'b100) begin
+                                            uc_state <= COPY_READ;
+                                            last_instruction <= RESET_INST;
+                                            counter_address <= 17'd0;
+                                            counter_rd_wr <= 2'b0;
+                                            wren_mem1 <= 1'b0;
+                                        end
+                                        else if (next_zoom == 3'b011 || next_zoom == 3'b010 || next_zoom == 3'b001) begin
+                                            last_instruction <= NH_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end else begin
+                                            last_instruction <= NHI_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end
+                                    end
+                                end
+                                NHI_ALG: begin
+                                    if (FLAG_ZOOM_MAX) begin
+                                        FLAG_DONE <= 1'b1;
+                                        FLAG_ERROR <= 1'b1;
+                                        uc_state <= IDLE;
+                                    end else begin
+                                        next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
+                                        if (next_zoom == 3'b100) begin
+                                            uc_state <= COPY_READ;
+                                            last_instruction <= RESET_INST;
+                                            counter_address <= 17'd0;
+                                            counter_rd_wr <= 2'b0;
+                                            wren_mem1 <= 1'b0;
+                                        end
+                                        else if (next_zoom == 3'b101 || next_zoom == 3'b110 || next_zoom == 3'b111) begin
+                                            last_instruction <= NHI_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end else begin
+                                            last_instruction <= NH_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end
+                                    end
+                                end
+                                BA_ALG:begin
+                                    if (FLAG_ZOOM_MIN) begin
+                                        FLAG_DONE <= 1'b1;
+                                        FLAG_ERROR <= 1'b1;
+                                        uc_state <= IDLE;
+                                    end else begin
+                                        next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
+                                        if (next_zoom == 3'b100) begin
+                                            uc_state <= COPY_READ;
+                                            last_instruction <= RESET_INST;
+                                            counter_address <= 17'd0;
+                                            counter_rd_wr <= 2'b0;
+                                            wren_mem1 <= 1'b0;
+                                        end
+                                        else if (next_zoom == 3'b011 || next_zoom == 3'b010 || next_zoom == 3'b001) begin
+                                            last_instruction <= BA_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end else begin
+                                            last_instruction <= PR_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end
+                                        
+                                    end
+                                end
+                                PR_ALG: begin
+                                    if (FLAG_ZOOM_MAX) begin
+                                        FLAG_DONE <= 1'b1;
+                                        FLAG_ERROR <= 1'b1;
+                                        uc_state <= IDLE;
+                                    end else begin
+                                        next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
+                                        if (next_zoom == 3'b100) begin
+                                            uc_state <= COPY_READ;
+                                            last_instruction <= RESET_INST;
+                                            counter_address <= 17'd0;
+                                            counter_rd_wr <= 2'b0;
+                                            wren_mem1 <= 1'b0;
+                                        end
+                                        else if (next_zoom == 3'b101 || next_zoom == 3'b110 || next_zoom == 3'b111) begin
+                                            last_instruction <= PR_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end else begin
+                                            last_instruction <= BA_ALG;
+                                            uc_state         <= ALGORITHM;
+                                        end
+                                    
+                                    end
+                                end
 
-                        case (INSTRUCTION)
-                            NH_ALG:begin
-                                next_zoom <= (current_zoom >= 3'b010) ? current_zoom - 1'b1:current_zoom;
-                                if (current_zoom == 3'b100 || current_zoom == 3'b011 || current_zoom == 3'b010) begin
-                                    last_instruction <= NH_ALG;
-                                end else begin
-                                    last_instruction <= NHI_ALG;
-                                end
-                            end
-                            NHI_ALG: begin
-                                next_zoom <= (current_zoom <= 3'b110) ? current_zoom + 1'b1: current_zoom;
-                                if (current_zoom == 3'b100 || current_zoom == 3'b101 || current_zoom == 3'b110) begin
-                                    last_instruction <= NHI_ALG;
-                                end else begin
-                                    last_instruction <= NH_ALG;
-                                end
-                            end
-                            BA_ALG:begin
-                                next_zoom <= (current_zoom >= 3'b010) ? current_zoom - 1'b1:current_zoom;
-                                if (current_zoom == 3'b100 || current_zoom == 3'b011 || current_zoom == 3'b010) begin
-                                    last_instruction <= BA_ALG;
-                                end else begin
-                                    last_instruction <= PR_ALG;
-                                end
-                            end
-                            PR_ALG: begin
-                                next_zoom <= (current_zoom <= 3'b110) ? current_zoom + 1'b1: current_zoom;
-                                if (next_zoom == 3'b100 || next_zoom == 3'b101 || next_zoom == 3'b110) begin
-                                    last_instruction <= PR_ALG;
-                                end else if (next_zoom < 3'b100) begin
-                                    last_instruction <= BA_ALG;
-                                end
-                            end
-
-                        endcase
-                        uc_state         <= ALGORITHM;
-                        counter_address <= 17'd0;
-                        counter_rd_wr <= 2'b0;
+                            endcase
+                            
+                            counter_address <= 17'd0;
+                            counter_rd_wr <= 2'b0;
                         
                     end else if (INSTRUCTION == RESET_INST) begin
                         last_instruction <= 3'b111;
@@ -345,7 +406,6 @@ module main(
                                         end else begin
                                             old_x <= new_x;
                                         end
-    
                                         current_step <= current_step + 1;
                                     end
                                 end
@@ -359,10 +419,24 @@ module main(
                             current_step <= 19'd0;
                             needed_steps <= 19'd76799;
                             op_step <= 3'b0;
-                            old_x <= 10'd80;
-                            old_y <= 10'd60;
                             new_x <= 10'b0;
                             new_y <= 10'b0;
+
+                            if (next_zoom == 3'b101) begin
+                                old_x <= 10'd80;
+                                old_y <= 10'd60;
+
+                            end else if (next_zoom == 3'b110) begin
+                                old_x <= 10'd120;
+                                old_y <= 10'd90;
+                            end else if (next_zoom == 3'b111) begin
+                                old_x <= 10'd140;
+                                old_y <= 10'd105;
+                            end else begin
+                                old_x <= 10'd0;
+                                old_y <= 10'd0;
+                            end
+
 
                         end else begin
                             if (current_step >= needed_steps) begin
@@ -391,11 +465,31 @@ module main(
                                     if (new_x >= 10'd319) begin
                                         new_x <= 10'd0;
                                         new_y <= new_y + 1'b1;
-                                        old_x <= 10'd80;
-                                        old_y <= (new_y>>1'b1) + 10'd60;
+                                        if (next_zoom == 3'b101) begin
+                                            old_x <= 10'd80;
+                                            old_y <= (new_y>>1'b1) + 10'd60;
+                                        end else if (next_zoom == 3'b110) begin
+                                            old_x <= 10'd120;
+                                            old_y <= (new_y>>2'd2) + 10'd90;
+                                        end else if (next_zoom == 3'b111) begin
+                                            old_x <= 10'd140;
+                                            old_y <= (new_y>>2'd3) + 10'd105;
+                                        end else begin
+                                            old_x <= new_x;
+                                            old_y <= new_y;
+                                        end
+                                        
                                     end else begin
                                         new_x <= new_x + 1'b1;
-                                        old_x <= (new_x>>1'b1) + 10'd80;
+                                        if (next_zoom == 3'b101) begin
+                                            old_x <= (new_x>>1'b1) + 10'd80;
+                                        end else if (next_zoom == 3'b110) begin
+                                            old_x <= (new_x>>2'd2) + 10'd120;
+                                        end else if (next_zoom == 3'b111) begin
+                                            old_x <= (new_x>>2'd3) + 10'd140;
+                                        end else begin
+                                            old_x <= new_x;
+                                        end
                                     end
                                 end
                             end
@@ -419,11 +513,10 @@ module main(
                                 counter_rd_wr <= 2'b0;
                                 has_alg_on_exec <= 1'b0;
                                 wren_mem3 <= 1'b0;
-                                
                                 uc_state <= COPY_READ;
 
                             end else begin
-                                if ((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) begin
+                                if ((((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) && next_zoom == 3'b011) || (((new_x < 10'd120 || new_x > 10'd199 ) || (new_y < 10'd90 ||  new_y > 10'd149)) && next_zoom == 3'b010) || (((new_x < 10'd140 || new_x > 10'd179 ) || (new_y < 10'd105 ||  new_y > 10'd134)) && next_zoom == 3'b001)) begin
                                     current_step <= current_step + 1'b1;
                                     data_to_write <= 8'b0;
                                     counter_rd_wr <= 2'b0;
@@ -443,7 +536,14 @@ module main(
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
                                         uc_state <= 3'b111;
-                                        old_x <= old_x + 1'b1;
+                                        if (next_zoom == 3'b011) begin
+                                            old_x <= old_x + 1'b1;
+                                        end else if (next_zoom == 3'b010) begin
+                                            old_x <= old_x + 2'd2;
+                                        end else if (next_zoom == 3'b001) begin
+                                            old_x <= old_x + 3'd4;
+                                        end
+
                                         op_step <= 3'b001;
                                     end else if (op_step == 3'b001) begin
                                         data_to_avg[7:0] <= data_out_mem1;
@@ -451,8 +551,16 @@ module main(
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
                                         uc_state <= 3'b111;
-                                        old_x <= old_x - 1'b1;
-                                        old_y <= old_y + 1'b1;
+                                        if (next_zoom == 3'b011) begin
+                                            old_x <= old_x - 1'b1;
+                                            old_y <= old_y + 1'b1;
+                                        end else if (next_zoom == 3'b010) begin
+                                            old_x <= old_x - 2'd2;
+                                            old_y <= old_y + 2'd2;
+                                        end else if (next_zoom == 3'b001) begin
+                                            old_x <= old_x - 3'd4;
+                                            old_y <= old_y + 3'd4;
+                                        end
                                         op_step <= 3'b010;
                                     end else if (op_step == 3'b010) begin
                                         data_to_avg[15:8] <= data_out_mem1;
@@ -460,7 +568,13 @@ module main(
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
                                         uc_state <= 3'b111;
-                                        old_x <= old_x + 1'b1;
+                                        if (next_zoom == 3'b011) begin
+                                            old_x <= old_x + 1'b1;
+                                        end else if (next_zoom == 3'b010) begin
+                                            old_x <= old_x + 2'd2;
+                                        end else if (next_zoom == 3'b001) begin
+                                            old_x <= old_x + 3'd4;
+                                        end
                                         op_step <= 3'b011;
                                     end else if (op_step == 3'b011) begin
                                         data_to_avg[23:16] <= data_out_mem1;
@@ -468,12 +582,27 @@ module main(
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
                                         uc_state <= 3'b111;
-                                        if (old_x >= 10'd319) begin
+                                        if (((old_x >= 10'd319) && (next_zoom == 3'b011)) || ((old_x >= 10'd318) && (next_zoom == 3'b010)) || ((old_x >= 10'd316) && (next_zoom == 3'b001))) begin
                                             old_x <= 10'd0;
-                                            old_y <= old_y + 1'b1;
+                                            if (next_zoom == 3'b011) begin
+                                                old_y <= old_y + 1'b1;
+                                            end else if (next_zoom == 3'b010) begin
+                                                old_y <= old_y + 2'd2;
+                                            end else if (next_zoom == 3'b001) begin
+                                                old_y <= old_y + 3'd4;
+                                            end
                                         end else begin
-                                            old_x <= old_x + 1'b1;
-                                            old_y <= old_y - 1'b1;
+                                            
+                                            if (next_zoom == 3'b011) begin
+                                                old_y <= old_y - 1'b1;
+                                                old_x <= old_x + 1'b1;
+                                            end else if (next_zoom == 3'b010) begin
+                                                old_y <= old_y - 2'd2;
+                                                old_x <= old_x + 2'd2;
+                                            end else if (next_zoom == 3'b001) begin
+                                                old_y <= old_y - 3'd4;
+                                                old_x <= old_x + 3'd4;
+                                            end
                                         end
                                         op_step <= 3'b100;
                                     end else if (op_step == 3'b100) begin
@@ -520,7 +649,7 @@ module main(
                                 uc_state <= COPY_READ;
 
                             end else begin
-                                if ((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) begin
+                                if ((((new_x < 10'd80 || new_x > 10'd239 ) || (new_y < 10'd60 ||  new_y > 10'd179)) && next_zoom == 3'b011) || (((new_x < 10'd120 || new_x > 10'd199 ) || (new_y < 10'd90 ||  new_y > 10'd149)) && next_zoom == 3'b010) || (((new_x < 10'd140 || new_x > 10'd179 ) || (new_y < 10'd105 ||  new_y > 10'd134)) && next_zoom == 3'b001)) begin
                                     current_step <= current_step + 1'b1;
                                     data_to_write <= 8'b0;
                                     counter_rd_wr <= 2'b0;
@@ -536,15 +665,38 @@ module main(
                                     uc_state <= 3'b111;
                                 end else begin
                                     if (op_step == 3'b000) begin
-                                        addr_for_read <= (old_x<<1) + ((old_y<<1)*10'd320);
+                                        if (next_zoom == 3'b011) begin
+                                            addr_for_read <= (old_x<<1) + ((old_y<<1)*10'd320);
+                                        end else if (next_zoom == 3'b010) begin
+                                            addr_for_read <= (old_x<<2) + ((old_y<<2)*10'd320);
+                                        end else if (next_zoom == 3'b001) begin
+                                            addr_for_read <= (old_x<<3) + ((old_y<<3)*10'd320);
+                                        end
+                                        
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
                                         uc_state <= 3'b111;
-                                        if (old_x >= 10'd159) begin
-                                            old_x <= 10'd0;
-                                            old_y <= old_y + 2'd1;
-                                        end else begin
-                                            old_x <= old_x + 2'd1;
+                                        if (next_zoom == 3'b011) begin
+                                            if (old_x >= 10'd159) begin
+                                                old_x <= 10'd0;
+                                                old_y <= old_y + 2'd1;
+                                            end else begin
+                                                old_x <= old_x + 2'd1;
+                                            end
+                                        end else if (next_zoom == 3'b010) begin
+                                            if (old_x >= 10'd79) begin
+                                                old_x <= 10'd0;
+                                                old_y <= old_y + 2'd1;
+                                            end else begin
+                                                old_x <= old_x + 2'd1;
+                                            end
+                                        end else if (next_zoom == 3'b001) begin
+                                            if (old_x >= 10'd39) begin
+                                                old_x <= 10'd0;
+                                                old_y <= old_y + 2'd1;
+                                            end else begin
+                                                old_x <= old_x + 2'd1;
+                                            end
                                         end
                                         op_step <= 3'b001;
                                     end else if (op_step == 3'b001) begin

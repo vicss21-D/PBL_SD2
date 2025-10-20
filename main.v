@@ -156,10 +156,6 @@ module main(
 
         case (uc_state) 
             IDLE: begin 
-
-                if (current_zoom == 3'b000) begin
-                    current_zoom <= 3'b100;
-                end
                 has_alg_on_exec     <= 1'b0;
                 FLAG_DONE           <= 1'b1;
                 wren_mem1 <= 1'b0;
@@ -213,7 +209,7 @@ module main(
                                             counter_rd_wr <= 2'b0;
                                             wren_mem1 <= 1'b0;
                                         end
-                                        else if (next_zoom == 3'b101 || next_zoom == 3'b110 || next_zoom == 3'b111) begin
+                                        else if (next_zoom >= 3'b101) begin
                                             last_instruction <= NHI_ALG;
                                             uc_state         <= ALGORITHM;
                                         end else begin
@@ -236,7 +232,7 @@ module main(
                                             counter_rd_wr <= 2'b0;
                                             wren_mem1 <= 1'b0;
                                         end
-                                        else if (next_zoom == 3'b011 || next_zoom == 3'b010 || next_zoom == 3'b001) begin
+                                        else if (next_zoom <= 3'b011) begin
                                             last_instruction <= BA_ALG;
                                             uc_state         <= ALGORITHM;
                                         end else begin

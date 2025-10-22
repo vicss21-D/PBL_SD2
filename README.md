@@ -12,6 +12,17 @@ Este coprocessador foi desenvolvido como complemento para o segundo problema de 
 
 # Estrutura do CoProcessador
 
+
+<div align="center">
+  <figure>
+    <img src="docs/CoProcessador .png" width="800px"/>
+    <figcaption>
+      <p align="center">
+        <b>Figura 1</b> - Diagrama de blocos da estrutura do CoProcessador desenvolvido
+      </p>
+    </figcaption>
+  </figure>
+</div>
 O CoProcessador desenvolvido implementa uma arquitetura simples, sem pipeline ou qualquer forma de paralelismo, assim se faz necessario esperar uma instrução se encerrar para tentar execultar uma nova. A estrutura do CoProcessador é composta por:
 
 - **Memorias**: É composto por 3 memorias utilizando a arquitetura on chip memory da ciclone V, são 3 memorias do tipo ram dual port com sinais de clock sincronos.
@@ -22,6 +33,7 @@ O CoProcessador desenvolvido implementa uma arquitetura simples, sem pipeline ou
 
 > [!NOTE]
 > Até o presente momento a UEA e a UC estão localizadas no mesmo bloco always, mas serão separadas futuramente, sendo a **UEA** movida para o modulo `Memory Control` e a **UC** permanecendo no bloco always atual.
+
 
 <details>
 <summary><h2>Tempo de execução das instruções</h2></summary>

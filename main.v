@@ -174,11 +174,8 @@ module main(
                                     end else begin
                                         next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
                                         if (next_zoom == 3'b100) begin
-                                            uc_state <= COPY_READ;
+                                            uc_state <= RESET;
                                             last_instruction <= RESET_INST;
-                                            counter_address <= 17'd0;
-                                            counter_rd_wr <= 2'b0;
-                                            wren_mem1 <= 1'b0;
                                         end
                                         else if (next_zoom <= 3'b011 ) begin
                                             last_instruction <= NH_ALG;
@@ -197,11 +194,8 @@ module main(
                                     end else begin
                                         next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
                                         if (next_zoom == 3'b100) begin
-                                            uc_state <= COPY_READ;
+                                            uc_state <= RESET;
                                             last_instruction <= RESET_INST;
-                                            counter_address <= 17'd0;
-                                            counter_rd_wr <= 2'b0;
-                                            wren_mem1 <= 1'b0;
                                         end
                                         else if (next_zoom >= 3'b101) begin
                                             last_instruction <= NHI_ALG;
@@ -220,11 +214,8 @@ module main(
                                     end else begin
                                         next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
                                         if (next_zoom == 3'b100) begin
-                                            uc_state <= COPY_READ;
+                                            uc_state <= RESET;
                                             last_instruction <= RESET_INST;
-                                            counter_address <= 17'd0;
-                                            counter_rd_wr <= 2'b0;
-                                            wren_mem1 <= 1'b0;
                                         end
                                         else if (next_zoom <= 3'b011) begin
                                             last_instruction <= BA_ALG;
@@ -244,11 +235,8 @@ module main(
                                     end else begin
                                         next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
                                         if (next_zoom == 3'b100) begin
-                                            uc_state <= COPY_READ;
+                                            uc_state <= RESET;
                                             last_instruction <= RESET_INST;
-                                            counter_address <= 17'd0;
-                                            counter_rd_wr <= 2'b0;
-                                            wren_mem1 <= 1'b0;
                                         end
                                         else if (next_zoom >= 3'b101) begin
                                             last_instruction <= PR_ALG;

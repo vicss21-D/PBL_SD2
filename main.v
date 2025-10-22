@@ -4,6 +4,7 @@ module main(
     input [2:0] INSTRUCTION,
     input [7:0] DATA_IN,
     input [16:0] MEM_ADDR,
+    input SEL_MEM,
     input ENABLE,
 
     // Portas de Saída e Debug
@@ -12,16 +13,9 @@ module main(
     output reg FLAG_ERROR,
     output FLAG_ZOOM_MAX,
     output FLAG_ZOOM_MIN,
-    output [16:0] addr_in_memory,
-    output [7:0] data_in_memory,
-    output [2:0] op_count,
-    output addr_control_done,
-
     output [7:0] VGA_R, output [7:0] VGA_B, output [7:0] VGA_G,
     output VGA_BLANK_N, output VGA_H_SYNC_N, output VGA_V_SYNC_N, output VGA_CLK, output VGA_SYNC
 );
-
-    assign op_count = uc_state;
     //================================================================
     // 1. Definições, Clocks e Sinais
     //================================================================
@@ -35,7 +29,7 @@ module main(
 
     localparam NOP = 3'b000, LOAD = 3'b001, STORE = 3'b010, NHI_ALG = 3'b011;  //Instruções
     localparam PR_ALG = 3'b100, BA_ALG = 3'b101, NH_ALG = 3'b110, RESET_INST = 3'b111;  //instruções
-    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101; // estados
+    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101, WAIT_WR_OR_RD = 3'b111;; // estados
 
     // --- Sinais de Controle da FSM ---
     reg [2:0] uc_state;
@@ -93,7 +87,7 @@ module main(
         .q(data_out_mem3)
     );
 
-    assign addr_mem1 = (uc_state != ALGORITHM && uc_state != 3'b111) ? addr_for_copy: addr_for_read;
+    assign addr_mem1 = (uc_state != ALGORITHM || uc_state != WAIT_WR_OR_RD) ? addr_for_copy: addr_for_read; //teve mudança aqui
 
     //================================================================
     // 3. Lógica do VGA
@@ -288,12 +282,18 @@ module main(
                     addr_wr_mem1 <= MEM_ADDR;
                     data_to_write_mem1 <= DATA_IN;
                     wren_mem1 <= 1'b1;
-                    uc_state <= 3'b111;
+                    uc_state <= WAIT_WR_OR_RD;
                     counter_rd_wr <= 2'b00;
                 end else begin
-                    addr_for_read <= MEM_ADDR;
+                    if (SEL_MEM) begin
+                        addr_mem3 <= MEM_ADDR;
+                        wren_mem3 <= 1'b0;
+                    end else begin
+                        addr_for_copy <= MEM_ADDR;
+                        wren_mem1 <= 1'b0;
+                    end
                     counter_rd_wr <= 2'b0;
-                    uc_state <= 3'b111;
+                    uc_state <= WAIT_WR_OR_RD;
                 end
             end
 
@@ -339,14 +339,14 @@ module main(
                                     counter_rd_wr <= 2'b0;
                                     op_step <= 3'b001;
                                     wren_mem3 <= 1'b0;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                 end else if (op_step == 3'b001) begin
                                     data_to_write <= data_out_mem1;
                                     counter_rd_wr <= 2'b0;
                                     addr_for_write <= new_x + (new_y*10'd320);
                                     wren_mem3 <= 1'b1;
                                     op_step <= 3'b010;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                     new_x <= new_x + 1'b1;
                                 end else if (op_step == 3'b010) begin
                                     data_to_write <= data_out_mem1;
@@ -354,7 +354,7 @@ module main(
                                     addr_for_write <= new_x + (new_y*10'd320);
                                     wren_mem3 <= 1'b1;
                                     op_step <= 3'b011;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                     new_x <= new_x - 1'b1;
                                     new_y <= new_y + 1'b1;
                                 end else if (op_step == 3'b011) begin
@@ -363,7 +363,7 @@ module main(
                                     addr_for_write <= new_x + (new_y*10'd320);
                                     wren_mem3 <= 1'b1;
                                     op_step <= 3'b100;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                     new_x <= new_x + 1'b1;
                                 end else if (op_step == 3'b100) begin
                                     data_to_write <= data_out_mem1;
@@ -371,7 +371,7 @@ module main(
                                     addr_for_write <= new_x + (new_y*10'd320);
                                     wren_mem3 <= 1'b1;
                                     op_step <= 3'b000;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                     if (new_x >= 10'd319) begin
                                         new_x <= 10'd0;
                                         new_y <= new_y + 1'b1;
@@ -449,7 +449,7 @@ module main(
                                     counter_rd_wr <= 2'b0;
                                     op_step <= 3'b001;
                                     wren_mem3 <= 1'b0;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                 end else if (op_step == 3'b001) begin
                                     current_step <= current_step + 1'b1;
                                     data_to_write <= data_out_mem1;
@@ -457,7 +457,7 @@ module main(
                                     addr_for_write <= new_x + (new_y*10'd320);
                                     wren_mem3 <= 1'b1;
                                     op_step <= 3'b000;
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                     if (new_x >= 10'd319) begin
                                         new_x <= 10'd0;
                                         new_y <= new_y + 1'b1;
@@ -525,13 +525,13 @@ module main(
                                     end else begin
                                         new_x <= new_x + 1'b1;
                                     end
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                 end else begin
                                     if (op_step == 3'b000) begin
                                         addr_for_read <= old_x + (old_y*10'd320);
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                         if (next_zoom == 3'b011) begin
                                             old_x <= old_x + 1'b1;
                                         end else if (next_zoom == 3'b010) begin
@@ -546,7 +546,7 @@ module main(
                                         addr_for_read <= old_x + (old_y*10'd320);
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                         if (next_zoom == 3'b011) begin
                                             old_x <= old_x - 1'b1;
                                             old_y <= old_y + 1'b1;
@@ -563,7 +563,7 @@ module main(
                                         addr_for_read <= old_x + (old_y*10'd320);
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
-                                        uc_state <= 3'b111;
+                                        uc_state <=WAIT_WR_OR_RD;
                                         if (next_zoom == 3'b011) begin
                                             old_x <= old_x + 1'b1;
                                         end else if (next_zoom == 3'b010) begin
@@ -577,7 +577,7 @@ module main(
                                         addr_for_read <= old_x + (old_y*10'd320);
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                         if (((old_x >= 10'd319) && (next_zoom == 3'b011)) || ((old_x >= 10'd318) && (next_zoom == 3'b010)) || ((old_x >= 10'd316) && (next_zoom == 3'b001))) begin
                                             old_x <= 10'd0;
                                             if (next_zoom == 3'b011) begin
@@ -618,7 +618,7 @@ module main(
                                         end else begin
                                             new_x <= new_x + 1'b1;
                                         end
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                     end
                                 end
                             end
@@ -658,7 +658,7 @@ module main(
                                     end else begin
                                         new_x <= new_x + 1'b1;
                                     end
-                                    uc_state <= 3'b111;
+                                    uc_state <= WAIT_WR_OR_RD;
                                 end else begin
                                     if (op_step == 3'b000) begin
                                         if (next_zoom == 3'b011) begin
@@ -671,7 +671,7 @@ module main(
                                         
                                         counter_rd_wr <= 2'b0;
                                         wren_mem3 <= 1'b0;
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                         if (next_zoom == 3'b011) begin
                                             if (old_x >= 10'd159) begin
                                                 old_x <= 10'd0;
@@ -702,7 +702,7 @@ module main(
                                         addr_for_write <= new_x + (new_y*10'd320);
                                         wren_mem3 <= 1'b1;
                                         op_step <= 3'b000;
-                                        uc_state <= 3'b111;
+                                        uc_state <= WAIT_WR_OR_RD;
                                         if (new_x >= 10'd319) begin
                                             new_x <= 10'd0;
                                             new_y <= new_y + 1'b1;
@@ -765,12 +765,16 @@ module main(
                 end
             end
 
-            3'b111: begin
+            WAIT_WR_OR_RD: begin
                 if (counter_rd_wr == 2'b10) begin
                     counter_rd_wr <= 2'b00;
                     if (last_instruction == LOAD) begin
                         uc_state <= IDLE;
-                        DATA_OUT <= data_out_mem1;
+                        if (SEL_MEM) begin
+                            DATA_OUT <= data_out_mem3;
+                        end else begin
+                            DATA_OUT <= data_out_mem1;
+                        end
                         FLAG_DONE <= 1'b1;
                     end else if (last_instruction == STORE) begin
                         uc_state <= COPY_READ;

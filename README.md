@@ -114,14 +114,14 @@ Flag|Significado
 
 O coprocessador conta com um conjunto de 8 instruções que podem ser utilizadas para realizar operações aritmeticas, de armazenamento e de leitura de dados.
 
-> [!WARNING]
+>[!WARNING]
 > Uma instrução não é uma função, uma instrução é uma sequencia de bits que dizem ao coprocessador o que fazer, não possui um "retorno" como a chamada de uma função. O que acontece é que ao fim da execução de uma instrução, o coprocessador podera colocar um valor no [barramento de saida](#barramento-de-saida-data_out) e/ou atualizar os valores das [flags](#barramento-de-flags), mas não são todas as intruções que possuem uma escrita no barramento de saida ou no barramento de flags.
 
-> [!NOTE]
+>[!NOTE]
 > Nem todas as operações utilizão todos os 29 bits disponiveis, observar os campos de cada instrução
 > para evitar perda de dados ou problemas de funcionamento.
 
-> [!WARNING]
+>[!WARNING]
 > Os campos das instruções de dos dados **saem do mais significativo para o menos**, ou seja, o campo do opcode da instrução começa
 > no bit 0 e vai até o bit 2 e o mesmo se aplica aos demais campos de acordo com a instrução a ser utilizada.
 
@@ -143,11 +143,11 @@ O coprocessador conta com um conjunto de 8 instruções que podem ser utilizadas
 
 Descrição detalhada de cada uma das instruções com seus respectivos campos e possiveis [flags](#barramento-de-flags)
 
-> [!NOTE]
+>[!NOTE]
 > A unica instrução capaz de retornar um valor pelo [barramento de dados](#barramento-de-saida-data_out) é a intrução de [LOAD](#load), todas as outras não retornam ou alteram
 > o valor que esta no barramento
 
-> [!WARNING]
+>[!WARNING]
 > Para realizar uma operação sobe uma imagem de tamanho maximo 320x240 é necessario realizar a operação de [STORE](#store) 76800 vezes, sabendo que a cada vez que a instrução é realizada, é armazenado o valor de um pixel na memoria A que guarda a imagem original.
 
 <details>
@@ -192,7 +192,7 @@ Address   | Endereço do pixel a ser lido | 17 bits| 19 | 3
 Sel Mem   | Memoria a ser lida | 1 bit| 20 | 20
 Não usados| | 9 bits| 28| 21
 
-> [!NOTE]
+>[!NOTE]
 > Para endereçamento o valor pode ir de 0 a 76799, case seja passado um valor maior que este a flag de **erro** será ativa.
 
 - **Flags que podem ser ativadas**
@@ -225,10 +225,10 @@ Address| endereçamento que o pixel será escrito | 17 bits | 19 | 3
 Sel Mem| Campo não utilizado| 1 bit| 20 | 20
 Valor| valor do pixel a ser escrito com 8 bits, em escala de cinza| 8 bits | 28 | 21
 
-> [!NOTE]
+>[!NOTE]
 > O valor maximo para endereçamento é de 76799, caso seja passado um valor maior que este a flag de erro será ativada.
 
-> [!WARNING]
+>[!WARNING]
 > Sempre que um dado for escrito, toda a imagem será recarregada na memoria de leitura utilizada pelo vga.
 
 - **Flags que podem ser ativadas**

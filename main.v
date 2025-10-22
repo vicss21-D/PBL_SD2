@@ -29,7 +29,7 @@ module main(
 
     localparam NOP = 3'b000, LOAD = 3'b001, STORE = 3'b010, NHI_ALG = 3'b011;  //Instruções
     localparam PR_ALG = 3'b100, BA_ALG = 3'b101, NH_ALG = 3'b110, RESET_INST = 3'b111;  //instruções
-    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101, WAIT_WR_OR_RD = 3'b111;; // estados
+    localparam IDLE = 3'b00, READ_AND_WRITE = 3'b001, ALGORITHM = 3'b010, RESET = 3'b011, COPY_READ = 3'b100, COPY_WRITE = 3'b101, WAIT_WR_OR_RD = 3'b111; // estados
 
     // --- Sinais de Controle da FSM ---
     reg [2:0] uc_state;
@@ -87,7 +87,7 @@ module main(
         .q(data_out_mem3)
     );
 
-    assign addr_mem1 = (uc_state != ALGORITHM || uc_state != WAIT_WR_OR_RD) ? addr_for_copy: addr_for_read; //teve mudança aqui
+    assign addr_mem1 = (uc_state != ALGORITHM && uc_state != WAIT_WR_OR_RD && uc_state != READ_AND_WRITE) ? addr_for_copy: addr_for_read; //teve mudança aqui
 
     //================================================================
     // 3. Lógica do VGA
@@ -286,10 +286,10 @@ module main(
                     counter_rd_wr <= 2'b00;
                 end else begin
                     if (SEL_MEM) begin
-                        addr_mem3 <= MEM_ADDR;
+                        counter_address <= MEM_ADDR;
                         wren_mem3 <= 1'b0;
                     end else begin
-                        addr_for_copy <= MEM_ADDR;
+                        addr_for_read <= MEM_ADDR;
                         wren_mem1 <= 1'b0;
                     end
                     counter_rd_wr <= 2'b0;

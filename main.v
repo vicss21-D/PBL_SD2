@@ -109,7 +109,6 @@ module main(
     always @(posedge clk_100) begin
         data_to_vga_pipe <= (inside_box) ? data_out_mem2:8'b0;
     end 
-    
 
     reg [1:0] counter_rd_wr;
 
@@ -141,7 +140,7 @@ module main(
     reg [7:0] data_to_write_mem1;
 
     assign FLAG_ZOOM_MAX = (current_zoom == 3'b111) ? 1'b1: 1'b0;
-    assign FLAG_ZOOM_MIN = (current_zoom == 3'b001) ? 1'b1:1'b0;
+    assign FLAG_ZOOM_MIN = (current_zoom == 3'b001) ? 1'b1: 1'b0;
     
     //================================================================
     // 5. Máquina de Estados Finitos (FSM) Principal
@@ -155,7 +154,7 @@ module main(
                 wren_mem1 <= 1'b0;
                 wren_mem2 <= 1'b0;
                 wren_mem3 <= 1'b0;
-                current_zoom <= next_zoom;
+
 
                 if (enable_pulse) begin
                     //last_instruction <= INSTRUCTION;
@@ -169,60 +168,63 @@ module main(
                                 NH_ALG:begin
                                     if (FLAG_ZOOM_MIN) begin
                                         FLAG_DONE <= 1'b1;
-                                        FLAG_ERROR <= 1'b1;
                                         uc_state <= IDLE;
                                     end else begin
-                                        next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
-                                        if (next_zoom == 3'b100) begin
-                                            uc_state <= RESET;
+                                        next_zoom <=  current_zoom - 1'b1;
+                                        if (current_zoom == 3'b101) begin
+                                            uc_state <= COPY_READ;
                                             last_instruction <= RESET_INST;
                                         end
-                                        else if (next_zoom <= 3'b011 ) begin
+                                        else if (current_zoom <= 3'b100) begin
                                             last_instruction <= NH_ALG;
                                             uc_state         <= ALGORITHM;
-                                        end else if (next_zoom >= 3'b101) begin
+                                        end else if (next_zoom > 3'b100) begin
                                             last_instruction <= NHI_ALG;
                                             uc_state         <= ALGORITHM;
+                                        end else begin
+                                            uc_state <= IDLE;
                                         end
                                     end
                                 end
                                 NHI_ALG: begin
                                     if (FLAG_ZOOM_MAX) begin
                                         FLAG_DONE <= 1'b1;
-                                        FLAG_ERROR <= 1'b1;
                                         uc_state <= IDLE;
                                     end else begin
-                                        next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
-                                        if (next_zoom == 3'b100) begin
-                                            uc_state <= RESET;
+                                        next_zoom <= current_zoom + 1'b1;
+                                        if (current_zoom == 3'b011) begin
+                                            uc_state <= COPY_READ;
                                             last_instruction <= RESET_INST;
                                         end
-                                        else if (next_zoom >= 3'b101) begin
+                                        else if (current_zoom >= 3'b100) begin
                                             last_instruction <= NHI_ALG;
                                             uc_state         <= ALGORITHM;
-                                        end else if (next_zoom <= 3'b011) begin
+                                        end else if (next_zoom < 3'b100) begin
                                             last_instruction <= NH_ALG;
                                             uc_state         <= ALGORITHM;
+                                        end else begin
+                                            uc_state <= IDLE;
                                         end
                                     end
                                 end
                                 BA_ALG:begin
                                     if (FLAG_ZOOM_MIN) begin
                                         FLAG_DONE <= 1'b1;
-                                        FLAG_ERROR <= 1'b1;
                                         uc_state <= IDLE;
                                     end else begin
-                                        next_zoom <= (!FLAG_ZOOM_MIN) ? current_zoom - 1'b1:current_zoom;
-                                        if (next_zoom == 3'b100) begin
-                                            uc_state <= RESET;
+                                        next_zoom <=  current_zoom - 1'b1;
+                                        if (current_zoom == 3'b101) begin
+                                            uc_state <= COPY_READ;
                                             last_instruction <= RESET_INST;
                                         end
-                                        else if (next_zoom <= 3'b011) begin
+                                        else if (current_zoom <= 3'b100) begin
                                             last_instruction <= BA_ALG;
                                             uc_state         <= ALGORITHM;
-                                        end else if (next_zoom >= 3'b101) begin
+                                        end else if (current_zoom > 3'b100) begin
                                             last_instruction <= PR_ALG;
                                             uc_state         <= ALGORITHM;
+                                        end else begin
+                                            uc_state <= IDLE;
                                         end
                                         
                                     end
@@ -230,20 +232,21 @@ module main(
                                 PR_ALG: begin
                                     if (FLAG_ZOOM_MAX) begin
                                         FLAG_DONE <= 1'b1;
-                                        FLAG_ERROR <= 1'b1;
                                         uc_state <= IDLE;
                                     end else begin
-                                        next_zoom <= (!FLAG_ZOOM_MAX) ? current_zoom + 1'b1: current_zoom;
-                                        if (next_zoom == 3'b100) begin
-                                            uc_state <= RESET;
+                                        next_zoom <=  current_zoom + 1'b1;
+                                        if (current_zoom == 3'b011) begin
+                                            uc_state <= COPY_READ;
                                             last_instruction <= RESET_INST;
                                         end
-                                        else if (next_zoom >= 3'b101) begin
+                                        else if (current_zoom >= 3'b100) begin
                                             last_instruction <= PR_ALG;
                                             uc_state         <= ALGORITHM;
-                                        end else if (next_zoom <= 3'b011) begin
+                                        end else if (current_zoom < 3'b100) begin
                                             last_instruction <= BA_ALG;
                                             uc_state         <= ALGORITHM;
+                                        end else begin
+                                            uc_state <= IDLE;
                                         end
                                     
                                     end
@@ -257,6 +260,8 @@ module main(
                     end else if (INSTRUCTION == RESET_INST) begin
                         last_instruction <= 3'b111;
                         uc_state <= RESET;
+                        counter_address <= 17'd0;
+                        counter_rd_wr <= 2'b0;
                     end
                 end
             end
@@ -478,7 +483,7 @@ module main(
                                 end
                             end
                         end
-
+                    
                     end
                     BA_ALG: begin
                         if (!has_alg_on_exec) begin
@@ -681,6 +686,9 @@ module main(
                                             end else begin
                                                 old_x <= old_x + 2'd1;
                                             end
+                                        end else begin
+                                            old_x <= new_x;
+                                            old_y <= new_y;
                                         end
                                         op_step <= 3'b001;
                                     end else if (op_step == 3'b001) begin
@@ -707,9 +715,9 @@ module main(
 
             RESET: begin
                 FLAG_DONE <= 1'b0;
-                current_zoom   <= 3'b100;
                 next_zoom <= 3'b100;
                 FLAG_ERROR <= 1'b0;
+                last_instruction <= RESET_INST;
                 
                 counter_address <= 17'd0;
                 counter_rd_wr <= 2'b0;
@@ -735,16 +743,16 @@ module main(
                 end else begin
                     data_in_mem2 <= data_out_mem3;
                 end
-                //data_in_mem2 <=  (last_instruction == RESET || last_instruction == STORE) ? data_out_mem1:data_out_mem3; // Prepara o dado para ser escrito
                 addr_wr_mem2 <= counter_address; // Define o endereço de escrita na MEM2
                 wren_mem2    <= 1'b1;             // Habilita a escrita na MEM2
                 
                 if (counter_rd_wr == 2'b10) begin
                     counter_rd_wr <= 2'b00;
                     if (counter_address == 17'd76799) begin // 320*240 - 1
-                        uc_state <= IDLE; // Cópia concluída
                         current_zoom <= next_zoom;
                         FLAG_DONE <= 1'b1;
+                        uc_state <= IDLE; // Cópia concluída
+                        
                     end else begin
                         counter_address <= counter_address + 1'b1; // Incrementa para o próximo pixel
                         uc_state <= COPY_READ; // Volta para o estado de leitura

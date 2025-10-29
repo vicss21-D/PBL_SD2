@@ -709,6 +709,7 @@ module main(
                 FLAG_DONE <= 1'b0;
                 current_zoom   <= 3'b100;
                 next_zoom <= 3'b100;
+                FLAG_ERROR <= 1'b0;
                 
                 counter_address <= 17'd0;
                 counter_rd_wr <= 2'b0;

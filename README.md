@@ -97,7 +97,7 @@ Este barramento serve para informa ao processador que deve ser realizada a instr
 
 ## Barramento de Saida (DATA_OUT)
 
-O barramento de saida armazena o valor do endereço solicitado da imagen original ou da imagen alterada pela instrução de load até que um novo valor seja solicitado ou seja realizada alguma outra operação.
+O barramento de saida armazena o valor do pixel da imagem original ou da imagem alterada com base no endereço solicitado pela instrução de load. Este valor permanece no barramento até que uma nova instrução seja solicitada.
 
 </details>
 

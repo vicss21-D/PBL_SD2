@@ -20,7 +20,7 @@ module main(
     // 1. Definições, Clocks e Sinais
     //================================================================
     wire clk_100, clk_25_vga;
-    pll pll0(
+    pll pll0 (
         .refclk(CLOCK_50), 
         .rst(1'b0), 
         .outclk_0(clk_100), 
